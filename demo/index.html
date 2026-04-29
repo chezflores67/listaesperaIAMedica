@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tour Guiado · Lista de Espera IA Médica</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal: #0d9488;
+    --teal-light: #99f6e4;
+    --teal-dark: #0f766e;
+    --navy: #0f172a;
+    --slate: #334155;
+    --muted: #64748b;
+    --bg: #f8fafc;
+    --white: #ffffff;
+    --urgent: #ef4444;
+    --gold: #f59e0b;
+    --card-shadow: 0 4px 24px rgba(13,148,136,0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--navy); min-height: 100vh; }
+
+  /* OVERLAY */
+  #overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,0.72); z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px); transition: opacity 0.4s;
+  }
+  #overlay.hidden { opacity: 0; pointer-events: none; }
+
+  /* TOOLTIP CARD */
+  .tour-card {
+    background: var(--white); border-radius: 20px; padding: 32px 36px;
+    max-width: 460px; width: 90%; box-shadow: 0 24px 80px rgba(13,148,136,0.25);
+    position: relative; animation: cardIn 0.35s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes cardIn { from { transform: scale(0.85) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+
+  .tour-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--teal-light); color: var(--teal-dark);
+    font-size: 11px; font-weight: 600; letter-spacing: 1px;
+    padding: 4px 12px; border-radius: 999px; text-transform: uppercase; margin-bottom: 14px;
+  }
+  .tour-card h2 { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--navy); margin-bottom: 10px; line-height: 1.3; }
+  .tour-card p { font-size: 14.5px; color: var(--slate); line-height: 1.65; margin-bottom: 18px; }
+  .tour-card ul { padding-left: 18px; margin-bottom: 18px; }
+  .tour-card ul li { font-size: 13.5px; color: var(--slate); margin-bottom: 6px; line-height: 1.5; }
+  .tour-card ul li strong { color: var(--teal-dark); }
+
+  .tour-persona {
+    display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap;
+  }
+  .persona-tag {
+    padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .persona-doctor { background: #eff6ff; color: #1d4ed8; }
+  .persona-asistente { background: #fef3c7; color: #92400e; }
+  .persona-ambos { background: #f3e8ff; color: #7e22ce; }
+
+  .tour-progress {
+    display: flex; gap: 6px; margin-bottom: 20px; align-items: center;
+  }
+  .prog-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #e2e8f0; transition: all 0.3s;
+  }
+  .prog-dot.active { background: var(--teal); width: 22px; border-radius: 4px; }
+  .prog-dot.done { background: var(--teal-light); }
+
+  .tour-nav {
+    display: flex; gap: 10px; justify-content: space-between; align-items: center;
+    padding-top: 16px; border-top: 1px solid #f1f5f9;
+  }
+  .tour-nav .step-counter { font-size: 12px; color: var(--muted); }
+  .btn-nav {
+    padding: 10px 22px; border-radius: 10px; font-size: 13.5px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.2s; font-family: 'DM Sans', sans-serif;
+  }
+  .btn-prev { background: #f1f5f9; color: var(--slate); }
+  .btn-prev:hover { background: #e2e8f0; }
+  .btn-next { background: var(--teal); color: white; }
+  .btn-next:hover { background: var(--teal-dark); transform: translateX(2px); }
+  .btn-finish { background: var(--gold); color: var(--navy); }
+  .btn-finish:hover { background: #d97706; }
+
+  /* HIGHLIGHT RING */
+  .highlight-ring {
+    position: fixed; border: 3px solid var(--teal); border-radius: 14px;
+    box-shadow: 0 0 0 4000px rgba(15,23,42,0.55), 0 0 30px rgba(13,148,136,0.5);
+    pointer-events: none; z-index: 999; transition: all 0.4s cubic-bezier(.25,.8,.25,1);
+  }
+
+  /* APP MOCKUP */
+  #app-demo {
+    position: fixed; inset: 0; overflow-y: auto; overflow-x: hidden;
+    background: var(--bg); padding: 0;
+  }
+
+  /* SIDEBAR */
+  .demo-layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 220px; min-height: 100vh; background: var(--navy);
+    padding: 24px 16px; position: fixed; left: 0; top: 0; bottom: 0;
+    display: flex; flex-direction: column; gap: 4px; z-index: 10;
+  }
+  .sidebar-logo {
+    padding: 0 8px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px;
+  }
+  .sidebar-logo .doc-name { font-family: 'Playfair Display', serif; color: white; font-size: 14px; font-weight: 700; }
+  .sidebar-logo .doc-spec { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  .sidebar-item {
+    padding: 9px 12px; border-radius: 8px; color: #94a3b8; font-size: 12.5px;
+    cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;
+  }
+  .sidebar-item:hover, .sidebar-item.active { background: rgba(13,148,136,0.2); color: var(--teal-light); }
+  .sidebar-item .icon { font-size: 14px; }
+  .sidebar-badge {
+    margin-left: auto; background: var(--urgent); color: white;
+    font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 999px;
+  }
+  .turnos-section { padding: 16px 8px 8px; }
+  .turnos-label { font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .turno-chip {
+    padding: 6px 10px; border-radius: 6px; font-size: 11px; color: #94a3b8;
+    border: 1px solid rgba(255,255,255,0.07); margin-bottom: 4px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .turno-chip:hover { border-color: var(--teal); color: var(--teal-light); }
+  .turno-chip.active { background: rgba(13,148,136,0.15); border-color: var(--teal); color: var(--teal-light); }
+
+  /* MAIN */
+  .main-content { margin-left: 220px; padding: 28px 32px; min-height: 100vh; }
+
+  /* TOPBAR */
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .topbar h1 { font-family: 'Playfair Display', serif; font-size: 24px; color: var(--navy); }
+  .topbar-date { font-size: 13px; color: var(--muted); }
+  .btn-add {
+    background: var(--teal); color: white; padding: 9px 18px; border-radius: 9px;
+    font-size: 13px; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  }
+
+  /* STAT CARDS */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .stat-card {
+    background: white; border-radius: 14px; padding: 18px 20px;
+    box-shadow: var(--card-shadow); border: 1px solid #f1f5f9;
+  }
+  .stat-card .stat-num { font-size: 28px; font-weight: 700; color: var(--navy); }
+  .stat-card .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stat-card.urgent .stat-num { color: var(--urgent); }
+
+  /* AI BLOCK */
+  .ai-block {
+    background: linear-gradient(135deg, #0f172a 0%, #134e4a 100%);
+    border-radius: 16px; padding: 22px 24px; margin-bottom: 24px; color: white;
+  }
+  .ai-title { font-size: 13px; color: var(--teal-light); font-weight: 600; letter-spacing: 0.5px; margin-bottom: 14px; }
+  .ai-candidates { display: flex; gap: 12px; }
+  .ai-candidate {
+    background: rgba(255,255,255,0.07); border-radius: 10px; padding: 12px 16px; flex: 1;
+    border: 1px solid rgba(99,240,220,0.15);
+  }
+  .ai-rank { font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
+  .ai-name { font-size: 13px; font-weight: 600; color: white; margin-bottom: 4px; }
+  .ai-reason { font-size: 11px; color: #94a3b8; line-height: 1.4; }
+  .ai-score {
+    display: inline-block; background: var(--teal); color: white;
+    font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-top: 6px;
+  }
+
+  /* PATIENT LIST */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .section-title { font-size: 15px; font-weight: 600; color: var(--navy); }
+  .filter-tabs { display: flex; gap: 6px; }
+  .filter-tab {
+    padding: 5px 12px; border-radius: 6px; font-size: 12px; color: var(--muted);
+    background: #f1f5f9; border: none; cursor: pointer; transition: all 0.2s;
+  }
+  .filter-tab.active { background: var(--teal); color: white; }
+
+  .patient-card {
+    background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 10px;
+    border: 1px solid #f1f5f9; display: flex; align-items: center; gap: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.2s;
+  }
+  .patient-card:hover { border-color: var(--teal-light); transform: translateX(2px); }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 10px; background: var(--teal);
+    color: white; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .avatar.urgent { background: var(--urgent); }
+  .avatar.agendado { background: #7c3aed; }
+  .avatar.alta { background: #64748b; }
+  .patient-info { flex: 1; }
+  .patient-name { font-size: 14px; font-weight: 600; color: var(--navy); }
+  .patient-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .patient-note { font-size: 12px; color: var(--slate); margin-top: 3px; font-style: italic; }
+  .status-badge {
+    padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  }
+  .badge-urgente { background: #fee2e2; color: var(--urgent); }
+  .badge-pendiente { background: #fef3c7; color: #92400e; }
+  .badge-agendado { background: #ede9fe; color: #7c3aed; }
+  .badge-alta { background: #f1f5f9; color: var(--muted); }
+  .patient-tags { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+  .tag { font-size: 10px; padding: 2px 8px; border-radius: 4px; background: #f1f5f9; color: var(--muted); }
+  .wa-btn {
+    background: #25d366; color: white; border: none; border-radius: 7px;
+    padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;
+  }
+
+  /* CANCELACION MODULE */
+  .cancel-block {
+    background: white; border-radius: 16px; padding: 22px 24px; margin-bottom: 24px;
+    border: 1px solid #f1f5f9; box-shadow: var(--card-shadow);
+  }
+  .cancel-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .cancel-icon { font-size: 22px; }
+  .cancel-title { font-size: 15px; font-weight: 600; color: var(--navy); }
+  .cancel-slot {
+    background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px;
+    padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #9a3412;
+  }
+
+  /* STATS PAGE */
+  .stats-page { display: none; }
+  .chart-bar-container { margin-top: 16px; }
+  .bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .bar-label { font-size: 12px; color: var(--muted); width: 90px; text-align: right; }
+  .bar-track { flex: 1; height: 10px; background: #f1f5f9; border-radius: 5px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 5px; background: var(--teal); transition: width 1s; }
+  .bar-fill.urgent { background: var(--urgent); }
+  .bar-value { font-size: 12px; color: var(--navy); font-weight: 600; width: 30px; }
+
+  /* FORM PAGE */
+  .form-block { display: none; background: white; border-radius: 16px; padding: 24px; border: 1px solid #f1f5f9; box-shadow: var(--card-shadow); }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 12px; font-weight: 600; color: var(--slate); }
+  .form-group input, .form-group select, .form-group textarea {
+    padding: 9px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px;
+    font-family: 'DM Sans', sans-serif; color: var(--navy); transition: border 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none; border-color: var(--teal);
+  }
+  .form-group.full { grid-column: 1 / -1; }
+  .btn-save {
+    background: var(--teal); color: white; padding: 11px 24px; border-radius: 9px;
+    font-size: 13.5px; font-weight: 600; border: none; cursor: pointer; margin-top: 16px;
+  }
+
+  /* TOUR SELECTOR */
+  .tour-selector {
+    display: flex; gap: 12px; margin-bottom: 22px;
+  }
+  .selector-btn {
+    flex: 1; padding: 14px; border-radius: 12px; border: 2px solid #e2e8f0;
+    cursor: pointer; text-align: center; transition: all 0.2s; background: white;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .selector-btn:hover { border-color: var(--teal); }
+  .selector-btn.selected { border-color: var(--teal); background: #f0fdfa; }
+  .selector-btn .sel-icon { font-size: 28px; margin-bottom: 8px; }
+  .selector-btn .sel-title { font-size: 14px; font-weight: 600; color: var(--navy); }
+  .selector-btn .sel-sub { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+
+  /* WELCOME SCREEN */
+  #welcome-card {
+    text-align: center;
+  }
+  #welcome-card h1 { font-family: 'Playfair Display', serif; font-size: 26px; color: var(--navy); margin-bottom: 10px; }
+  #welcome-card p { font-size: 14.5px; color: var(--slate); line-height: 1.6; margin-bottom: 22px; }
+
+  .hidden { display: none !important; }
+
+  /* WHATSAPP PREVIEW */
+  .wa-preview {
+    background: #e5ddd5; border-radius: 12px; padding: 16px; margin-top: 12px;
+  }
+  .wa-bubble {
+    background: white; border-radius: 12px 12px 12px 2px; padding: 12px 14px;
+    max-width: 85%; font-size: 13px; line-height: 1.55; color: #1a1a1a; box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  }
+  .wa-time { font-size: 10px; color: #8b9a8c; text-align: right; margin-top: 4px; }
+
+  /* AIRTABLE TABLE */
+  .airtable-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12.5px; }
+  .airtable-table th { background: #f8fafc; color: var(--muted); font-weight: 600; padding: 9px 12px; text-align: left; border-bottom: 2px solid #e2e8f0; }
+  .airtable-table td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; color: var(--slate); }
+  .airtable-table tr:hover td { background: #f8fafc; }
+
+  /* Prompt viewer */
+  .prompt-block {
+    background: var(--navy); border-radius: 12px; padding: 20px; overflow-x: auto;
+    font-family: 'Courier New', monospace; font-size: 11px; color: #a8e6cf; line-height: 1.7;
+    max-height: 300px; overflow-y: auto;
+  }
+
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main-content { margin-left: 0; padding: 16px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .ai-candidates { flex-direction: column; }
+    .tour-card { padding: 22px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- APP DEMO (background) -->
+<div id="app-demo">
+  <div class="demo-layout">
+    <!-- SIDEBAR -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="doc-name">Dr. Carlos Flores</div>
+        <div class="doc-spec">Psiquiatría · Sistema de espera</div>
+      </div>
+      <div class="sidebar-item active" onclick="showSection('lista')" id="nav-lista">
+        <span class="icon">📋</span> Lista de espera
+        <span class="sidebar-badge">3</span>
+      </div>
+      <div class="sidebar-item" onclick="showSection('cancelacion')" id="nav-cancelacion">
+        <span class="icon">❌</span> Cancelación + IA
+      </div>
+      <div class="sidebar-item" onclick="showSection('agregar')" id="nav-agregar">
+        <span class="icon">➕</span> Agregar paciente
+      </div>
+      <div class="sidebar-item" onclick="showSection('whatsapp')" id="nav-whatsapp">
+        <span class="icon">💬</span> Simulador WhatsApp
+      </div>
+      <div class="sidebar-item" onclick="showSection('reportes')" id="nav-reportes">
+        <span class="icon">📊</span> Reportes & Docs
+      </div>
+      <div class="sidebar-item" onclick="showSection('airtable')" id="nav-airtable">
+        <span class="icon">🗄️</span> Estructura Airtable
+      </div>
+      <div class="sidebar-item" onclick="showSection('prompt')" id="nav-prompt">
+        <span class="icon">🤖</span> Prompt IA
+      </div>
+      <div class="turnos-section">
+        <div class="turnos-label">Turno activo</div>
+        <div class="turno-chip active">Mañana · L-V · 8-14h</div>
+        <div class="turno-chip">Tarde · L-V · 15-20h</div>
+        <div class="turno-chip">Sábado · 9-14h</div>
+      </div>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="main-content">
+      <!-- SECTION: LISTA -->
+      <div id="section-lista">
+        <div class="topbar">
+          <div>
+            <h1 id="topbar-title">Lista de espera</h1>
+            <div class="topbar-date">28 de abril 2026 · Asistente turno mañana</div>
+          </div>
+          <button class="btn-add" id="btn-add-patient">➕ Agregar paciente</button>
+        </div>
+
+        <div class="stats-row" id="stats-row">
+          <div class="stat-card">
+            <div class="stat-num">12</div>
+            <div class="stat-label">pacientes activos</div>
+          </div>
+          <div class="stat-card urgent">
+            <div class="stat-num">3</div>
+            <div class="stat-label">urgentes</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num">5</div>
+            <div class="stat-label">agendados</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num">18</div>
+            <div class="stat-label">días prom. de espera</div>
+          </div>
+        </div>
+
+        <div class="ai-block" id="ai-block">
+          <div class="ai-title">🤖 Análisis IA · Propuesta de prioridad para hoy</div>
+          <div class="ai-candidates">
+            <div class="ai-candidate">
+              <div class="ai-rank">1ª prioridad</div>
+              <div class="ai-name">Martínez Rivas, Sofía</div>
+              <div class="ai-reason">Crisis de ansiedad activa · 34 días en lista · disponible mañanas</div>
+              <div class="ai-score">96%</div>
+            </div>
+            <div class="ai-candidate">
+              <div class="ai-rank">2ª prioridad</div>
+              <div class="ai-name">Herrera Díaz, Marco</div>
+              <div class="ai-reason">Trastorno del sueño · 28 días · cualquier horario</div>
+              <div class="ai-score">78%</div>
+            </div>
+            <div class="ai-candidate">
+              <div class="ai-rank">3ª prioridad</div>
+              <div class="ai-name">Vázquez León, Carmen</div>
+              <div class="ai-reason">Episodio depresivo · 21 días · solo sábados</div>
+              <div class="ai-score">71%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <div class="section-title">Todos los pacientes</div>
+          <div class="filter-tabs" id="filter-tabs">
+            <button class="filter-tab active">Todos</button>
+            <button class="filter-tab">Urgentes</button>
+            <button class="filter-tab">Pendientes</button>
+            <button class="filter-tab">Agendados</button>
+            <button class="filter-tab">Alta</button>
+          </div>
+        </div>
+
+        <div id="patient-list">
+          <div class="patient-card">
+            <div class="avatar urgent">SM</div>
+            <div class="patient-info">
+              <div class="patient-name">Martínez Rivas, Sofía</div>
+              <div class="patient-meta">614-155-0234 · Ingresó: 25 Mar · 34 días en lista</div>
+              <div class="patient-note">Crisis de ansiedad severa, reportada por familiar</div>
+              <div class="patient-tags">
+                <span class="tag">Prefiere mañana</span>
+                <span class="tag">Turno mañana</span>
+              </div>
+            </div>
+            <span class="status-badge badge-urgente">Urgente</span>
+            <button class="wa-btn">💬 WhatsApp</button>
+          </div>
+          <div class="patient-card">
+            <div class="avatar urgent">VL</div>
+            <div class="patient-info">
+              <div class="patient-name">Vázquez León, Carmen</div>
+              <div class="patient-meta">614-322-0987 · Ingresó: 7 Abr · 21 días en lista</div>
+              <div class="patient-note">Episodio depresivo, dificultad funcional reportada</div>
+              <div class="patient-tags"><span class="tag">Solo sábados</span></div>
+            </div>
+            <span class="status-badge badge-urgente">Urgente</span>
+            <button class="wa-btn">💬 WhatsApp</button>
+          </div>
+          <div class="patient-card">
+            <div class="avatar">HD</div>
+            <div class="patient-info">
+              <div class="patient-name">Herrera Díaz, Marco</div>
+              <div class="patient-meta">614-488-1123 · Ingresó: 31 Mar · 28 días en lista</div>
+              <div class="patient-note">Insomnio crónico, ansiedad leve asociada</div>
+              <div class="patient-tags"><span class="tag">Horario flexible</span></div>
+            </div>
+            <span class="status-badge badge-pendiente">Pendiente</span>
+            <button class="wa-btn">💬 WhatsApp</button>
+          </div>
+          <div class="patient-card">
+            <div class="avatar agendado">RG</div>
+            <div class="patient-info">
+              <div class="patient-name">Reyes González, Ana</div>
+              <div class="patient-meta">614-201-3344 · Cita: Viernes 3 May, 11:00 AM</div>
+              <div class="patient-note">Evaluación general, referida por médico familiar</div>
+              <div class="patient-tags"><span class="tag">Tarde</span></div>
+            </div>
+            <span class="status-badge badge-agendado">Agendado</span>
+            <button class="wa-btn">🔔 Recordatorio</button>
+          </div>
+          <div class="patient-card">
+            <div class="avatar alta">LP</div>
+            <div class="patient-info">
+              <div class="patient-name">Luna Pérez, Roberto</div>
+              <div class="patient-meta">Alta: 15 Abr 2026 · Seguimiento en 6 meses</div>
+              <div class="patient-note">Alta médica otorgada.</div>
+            </div>
+            <span class="status-badge badge-alta">Alta médica</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: CANCELACION -->
+      <div id="section-cancelacion" class="hidden">
+        <div class="topbar"><h1>Módulo de Cancelación</h1></div>
+        <div class="cancel-block" id="cancel-block">
+          <div class="cancel-header">
+            <span class="cancel-icon">❌</span>
+            <span class="cancel-title">Registrar cancelación y reasignación IA</span>
+          </div>
+          <div class="cancel-slot">
+            📅 Martes, 7 de mayo 2026 · 10:00 AM · Turno mañana<br>
+            <strong>Canceló: García Montoya, Pedro</strong> · motivo: viaje de trabajo
+          </div>
+          <div class="ai-block" style="margin:0">
+            <div class="ai-title">🤖 Propuesta IA para este horario</div>
+            <div class="ai-candidates">
+              <div class="ai-candidate">
+                <div class="ai-rank">1° Opción</div>
+                <div class="ai-name">Martínez Rivas, Sofía</div>
+                <div class="ai-reason">Urgente · disponible mañanas · 34 días esperando</div>
+                <div class="ai-score">96%</div>
+              </div>
+              <div class="ai-candidate">
+                <div class="ai-rank">2° Opción</div>
+                <div class="ai-name">Herrera Díaz, Marco</div>
+                <div class="ai-reason">Pendiente · horario flexible · 28 días</div>
+                <div class="ai-score">78%</div>
+              </div>
+              <div class="ai-candidate">
+                <div class="ai-rank">3° Opción</div>
+                <div class="ai-name">Torres Medina, Luis</div>
+                <div class="ai-reason">Pendiente · prefiere mañana · 19 días</div>
+                <div class="ai-score">55%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: AGREGAR -->
+      <div id="section-agregar" class="hidden">
+        <div class="topbar"><h1>Agregar paciente</h1></div>
+        <div class="form-block" style="display:block" id="form-block">
+          <div class="form-grid">
+            <div class="form-group"><label>Apellido(s) *</label><input type="text" placeholder="Ej. García López"></div>
+            <div class="form-group"><label>Nombre(s) *</label><input type="text" placeholder="Ej. María Elena"></div>
+            <div class="form-group"><label>Teléfono / WhatsApp *</label><input type="text" placeholder="614-XXX-XXXX"></div>
+            <div class="form-group"><label>Email</label><input type="email" placeholder="correo@ejemplo.com"></div>
+            <div class="form-group"><label>Fecha de ingreso *</label><input type="date"></div>
+            <div class="form-group"><label>Turno preferido *</label>
+              <select><option>Mañana (L-V)</option><option>Tarde (L-V)</option><option>Sábado</option><option>Cualquier horario</option></select>
+            </div>
+            <div class="form-group"><label>Prioridad inicial *</label>
+              <select><option>Pendiente</option><option>Urgente</option></select>
+            </div>
+            <div class="form-group"><label>Médico referente</label><input type="text" placeholder="Nombre del médico (opcional)"></div>
+            <div class="form-group full"><label>Motivo de consulta *</label><textarea rows="3" placeholder="Descripción del motivo..."></textarea></div>
+            <div class="form-group full"><label>Notas internas (asistente)</label><textarea rows="2" placeholder="Observaciones que NO son visibles al paciente..."></textarea></div>
+            <div class="form-group"><label>Asistente que registra</label>
+              <select><option>Asistente turno mañana</option><option>Asistente turno tarde</option><option>Asistente sábados</option></select>
+            </div>
+            <div class="form-group"><label>Canal de contacto preferido</label>
+              <select><option>WhatsApp</option><option>Llamada telefónica</option><option>Email</option></select>
+            </div>
+          </div>
+          <button class="btn-save">💾 Guardar en Airtable y analizar prioridad</button>
+        </div>
+      </div>
+
+      <!-- SECTION: WHATSAPP -->
+      <div id="section-whatsapp" class="hidden">
+        <div class="topbar"><h1>Simulador WhatsApp</h1></div>
+        <div style="background:white;border-radius:16px;padding:24px;border:1px solid #f1f5f9;box-shadow:var(--card-shadow)">
+          <div class="wa-preview">
+            <div class="wa-bubble">
+              Hola Sofía Martínez 👋, le contacta la asistente del <strong>Dr. Carlos Flores Contreras</strong>.<br><br>
+              Se liberó una cita disponible para el <strong>martes 7 de mayo a las 10:00 AM</strong> por cancelación de otro paciente.<br><br>
+              ¿Le interesa tomar este espacio? Por favor confirme antes de las <strong>2:00 PM de hoy</strong> para reservarla. 🗓️<br><br>
+              📍 Consultorio: [dirección]<br>
+              📞 Tel: 614-XXX-XXXX
+              <div class="wa-time">10:23 AM ✓✓</div>
+            </div>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin-top:12px">⚡ En producción: enviado vía Twilio API automáticamente</p>
+        </div>
+      </div>
+
+      <!-- SECTION: REPORTES -->
+      <div id="section-reportes" class="hidden">
+        <div class="topbar"><h1>Reportes & Estadísticas</h1></div>
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-num">23</div><div class="stat-label">Atendidos este mes</div></div>
+          <div class="stat-card urgent"><div class="stat-num">4</div><div class="stat-label">Cancelaciones</div></div>
+          <div class="stat-card"><div class="stat-num">75%</div><div class="stat-label">Eficiencia recuperación</div></div>
+          <div class="stat-card"><div class="stat-num">18d</div><div class="stat-label">Tiempo prom. espera</div></div>
+        </div>
+        <div style="background:white;border-radius:16px;padding:24px;border:1px solid #f1f5f9">
+          <div class="section-title" style="margin-bottom:16px">Distribución mensual</div>
+          <div class="chart-bar-container">
+            <div class="bar-row"><div class="bar-label">Atendidos</div><div class="bar-track"><div class="bar-fill" style="width:77%"></div></div><div class="bar-value">23</div></div>
+            <div class="bar-row"><div class="bar-label">Nuevos</div><div class="bar-track"><div class="bar-fill" style="width:27%"></div></div><div class="bar-value">8</div></div>
+            <div class="bar-row"><div class="bar-label">Cancelaciones</div><div class="bar-track"><div class="bar-fill urgent" style="width:13%"></div></div><div class="bar-value">4</div></div>
+            <div class="bar-row"><div class="bar-label">Slots recuperados</div><div class="bar-track"><div class="bar-fill" style="width:10%;background:#7c3aed"></div></div><div class="bar-value">3</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: AIRTABLE -->
+      <div id="section-airtable" class="hidden">
+        <div class="topbar"><h1>Estructura Airtable</h1></div>
+        <div style="background:white;border-radius:16px;padding:24px;border:1px solid #f1f5f9">
+          <p style="font-size:13.5px;color:var(--slate);margin-bottom:16px">3 tablas interconectadas · Listo para crear en tu cuenta de Airtable</p>
+          <table class="airtable-table">
+            <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+            <tbody>
+              <tr><td>Nombre completo</td><td>Single line text</td><td>Apellido(s), Nombre(s)</td></tr>
+              <tr><td>Teléfono WhatsApp</td><td>Phone number</td><td>Para envío Twilio</td></tr>
+              <tr><td>Días en lista</td><td>Formula</td><td>Auto: DATETIME_DIFF(TODAY(), ...)</td></tr>
+              <tr><td>Status</td><td>Single select</td><td>Urgente · Pendiente · Agendado · Alta</td></tr>
+              <tr><td>Nivel urgencia IA</td><td>Number</td><td>Score 0-100 calculado por IA</td></tr>
+              <tr><td>Historial intentos</td><td>Long text</td><td>Registro de contactos previos</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SECTION: PROMPT -->
+      <div id="section-prompt" class="hidden">
+        <div class="topbar"><h1>Prompt del Sistema IA</h1></div>
+        <div style="background:white;border-radius:16px;padding:24px;border:1px solid #f1f5f9">
+          <p style="font-size:13.5px;color:var(--slate);margin-bottom:16px">System prompt optimizado para análisis de lista de espera psiquiátrica</p>
+          <div class="prompt-block">
+Eres el asistente IA del consultorio del Dr. Carlos Flores Contreras.<br>
+Tu función es priorizar pacientes con criterios clínicos y administrativos.<br><br>
+CRITERIOS DE PRIORIZACIÓN:<br>
+- Urgencia clínica: peso 40%<br>
+- Días en lista: peso 30%<br>
+- Compatibilidad horaria: peso 20%<br>
+- Intentos previos: peso 10%<br><br>
+PALABRAS CLAVE DE URGENCIA AUTOMÁTICA:<br>
+crisis, ideación, riesgo, autolesión, suicida, psicosis, brote...<br><br>
+REGLAS ÉTICAS:<br>
+- NUNCA compartir info de un paciente con otro<br>
+- NUNCA hacer diagnósticos<br>
+- Mensajes WA sin mencionar diagnósticos<br>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- OVERLAY -->
+<div id="overlay">
+  <div class="tour-card" id="tour-card">
+    <!-- content injected by JS -->
+  </div>
+</div>
+
+<!-- HIGHLIGHT RING -->
+<div class="highlight-ring hidden" id="highlight-ring"></div>
+
+<script>
+const TOURS = {
+  doctor: [
+    {
+      title: "Bienvenido, Dr. Flores 👋",
+      persona: "doctor",
+      badge: "Para el Médico",
+      content: `<p>Este tour le muestra cómo <strong>Lista de Espera IA Médica</strong> trabaja para usted en segundo plano, permitiéndole enfocarse en lo que importa: sus pacientes.</p><p>Su equipo gestiona todo desde esta plataforma. Usted recibe reportes, tiene visibilidad total y puede confiar en que <strong>la IA prioriza correctamente</strong> cada caso.</p>`,
+      highlight: null
+    },
+    {
+      title: "Panel de control del consultorio",
+      persona: "doctor",
+      badge: "Vista General",
+      content: `<p>En un solo vistazo usted puede ver el estado actual de su lista de espera:</p><ul>
+        <li><strong>12 pacientes activos</strong> en gestión</li>
+        <li><strong>3 casos urgentes</strong> identificados por la IA</li>
+        <li><strong>5 citas agendadas</strong> próximamente</li>
+        <li><strong>18 días</strong> promedio de espera (meta: -14 días)</li>
+      </ul><p>Sus asistentes actualizan esto en tiempo real.</p>`,
+      highlight: "stats-row",
+      section: "lista"
+    },
+    {
+      title: "Inteligencia Artificial priorizando sus casos",
+      persona: "doctor",
+      badge: "Motor de IA",
+      content: `<p>La IA analiza <strong>urgencia clínica, días en lista y compatibilidad de horario</strong> para recomendar a quién contactar primero.</p><ul>
+        <li>Peso clínico: <strong>40%</strong></li>
+        <li>Días en lista: <strong>30%</strong></li>
+        <li>Compatibilidad horaria: <strong>20%</strong></li>
+        <li>Intentos previos: <strong>10%</strong></li>
+      </ul><p>Detecta palabras de crisis automáticamente y eleva urgencia.</p>`,
+      highlight: "ai-block",
+      section: "lista"
+    },
+    {
+      title: "Cancelaciones: cero slots perdidos",
+      persona: "doctor",
+      badge: "Módulo Cancelación",
+      content: `<p>Cuando un paciente cancela, la IA <strong>propone inmediatamente</strong> quién puede ocupar ese slot, considerando urgencia y horario.</p><p>Sus asistentes notifican vía WhatsApp con un clic. <strong>75% de eficiencia de recuperación</strong> de slots en su consultorio.</p>`,
+      highlight: "cancel-block",
+      section: "cancelacion"
+    },
+    {
+      title: "Reportes ejecutivos para usted",
+      persona: "doctor",
+      badge: "Reportes",
+      content: `<p>Cada mes usted puede revisar métricas clave de su consultorio:</p><ul>
+        <li>Pacientes atendidos vs nuevos ingresos</li>
+        <li>Tasa de recuperación de cancelaciones</li>
+        <li>Tiempo promedio de espera</li>
+        <li>Distribución por turnos</li>
+      </ul><p>Todo exportable para sus registros médicos.</p>`,
+      highlight: null,
+      section: "reportes"
+    },
+    {
+      title: "¡Tour completado! 🎉",
+      persona: "doctor",
+      badge: "Listo",
+      content: `<p>Usted ya conoce las funciones clave de su plataforma. Su equipo manejará el día a día; usted tiene visibilidad y control total.</p><p style="margin-top:12px"><strong>Próximo paso:</strong> Que sus asistentes realicen el tour para ellas y empiecen a gestionar la lista de espera hoy mismo.</p>`,
+      highlight: null,
+      section: "lista"
+    }
+  ],
+  asistente: [
+    {
+      title: "Hola Asistente 👋",
+      persona: "asistente",
+      badge: "Para Asistentes",
+      content: `<p>Este tour te enseña a usar <strong>Lista de Espera IA Médica</strong> en tu turno diario. En minutos aprenderás a:</p><ul>
+        <li>Ver y filtrar la lista de pacientes</li>
+        <li>Registrar nuevos ingresos</li>
+        <li>Gestionar cancelaciones con IA</li>
+        <li>Enviar mensajes de WhatsApp automáticos</li>
+      </ul>`,
+      highlight: null
+    },
+    {
+      title: "La barra lateral: tu centro de trabajo",
+      persona: "asistente",
+      badge: "Navegación",
+      content: `<p>Desde el menú lateral accedes a todas las funciones:</p><ul>
+        <li><strong>Lista de espera</strong> — Ver todos los pacientes activos</li>
+        <li><strong>Cancelación + IA</strong> — Gestionar slots liberados</li>
+        <li><strong>Agregar paciente</strong> — Registrar nuevos ingresos</li>
+        <li><strong>Simulador WhatsApp</strong> — Ver mensajes antes de enviar</li>
+      </ul><p>El <span style="background:#fee2e2;color:#ef4444;padding:2px 6px;border-radius:4px;font-size:12px">3</span> rojo indica pacientes urgentes pendientes de gestión.</p>`,
+      highlight: "sidebar",
+      section: "lista"
+    },
+    {
+      title: "Lista de pacientes: filtra y actúa",
+      persona: "asistente",
+      badge: "Lista de Espera",
+      content: `<p>Puedes filtrar por estado con los botones de arriba:</p><ul>
+        <li><strong>Urgentes</strong> → Atender primero siempre</li>
+        <li><strong>Pendientes</strong> → En espera de slot disponible</li>
+        <li><strong>Agendados</strong> → Confirmar y recordar</li>
+        <li><strong>Alta</strong> → Historial completado</li>
+      </ul><p>Cada tarjeta muestra días en lista, preferencia de turno y notas del motivo.</p>`,
+      highlight: "patient-list",
+      section: "lista"
+    },
+    {
+      title: "Registrar un nuevo paciente",
+      persona: "asistente",
+      badge: "Alta Paciente",
+      content: `<p>Al ingresar un paciente, llena los campos obligatorios:</p><ul>
+        <li><strong>Nombre completo</strong> (Apellido, Nombre)</li>
+        <li><strong>Teléfono WhatsApp</strong></li>
+        <li><strong>Motivo de consulta</strong> — La IA lo analiza automáticamente</li>
+        <li><strong>Turno preferido</strong></li>
+        <li><strong>Prioridad inicial</strong> (Urgente/Pendiente)</li>
+      </ul><p>Si el motivo contiene palabras de crisis, la IA lo marca urgente automáticamente.</p>`,
+      highlight: "form-block",
+      section: "agregar"
+    },
+    {
+      title: "Gestionar una cancelación",
+      persona: "asistente",
+      badge: "Cancelación + IA",
+      content: `<p>Cuando un paciente cancele su cita:</p><ul>
+        <li>1. Ve a <strong>Cancelación + IA</strong> en el menú</li>
+        <li>2. Selecciona el paciente que canceló</li>
+        <li>3. Indica el turno y motivo</li>
+        <li>4. La IA propone <strong>3 candidatos</strong> del mejor al peor match</li>
+        <li>5. Haz clic en <strong>Asignar y notificar</strong> para enviar WhatsApp automático</li>
+      </ul>`,
+      highlight: "cancel-block",
+      section: "cancelacion"
+    },
+    {
+      title: "WhatsApp automático",
+      persona: "asistente",
+      badge: "Mensajes WA",
+      content: `<p>El sistema genera mensajes profesionales y cálidos para cada situación:</p><ul>
+        <li>📣 Slot disponible por cancelación</li>
+        <li>🔔 Recordatorio de cita</li>
+        <li>✅ Confirmación de agendado</li>
+        <li>📋 Seguimiento en lista</li>
+      </ul><p>Puedes previsualizar el mensaje antes de enviarlo. <strong>Nunca menciona diagnósticos</strong> por privacidad del paciente.</p>`,
+      highlight: null,
+      section: "whatsapp"
+    },
+    {
+      title: "¡Ya puedes trabajar! 🌟",
+      persona: "asistente",
+      badge: "¡Lista!",
+      content: `<p>Recuerda las reglas de oro:</p><ul>
+        <li>✅ Siempre atender <strong>urgentes primero</strong></li>
+        <li>✅ Registrar cada intento de contacto</li>
+        <li>✅ Respetar la <strong>confidencialidad</strong> del paciente</li>
+        <li>✅ Ante crisis — escala inmediatamente al Dr. Flores</li>
+        <li>✅ Cambiar el estado del paciente al confirmar cita</li>
+      </ul><p style="margin-top:10px">¡Tu trabajo es clave para que los pacientes reciban atención oportuna! 💙</p>`,
+      highlight: null,
+      section: "lista"
+    }
+  ]
+};
+
+let currentTour = null;
+let currentStep = 0;
+let tourSteps = [];
+
+function showSection(name) {
+  ['lista','cancelacion','agregar','whatsapp','reportes','airtable','prompt'].forEach(s => {
+    const el = document.getElementById('section-'+s);
+    if(el) el.classList.add('hidden');
+    const nav = document.getElementById('nav-'+s);
+    if(nav) nav.classList.remove('active');
+  });
+  const section = document.getElementById('section-'+name);
+  if(section) section.classList.remove('hidden');
+  const nav = document.getElementById('nav-'+name);
+  if(nav) nav.classList.add('active');
+}
+
+function startTour(type) {
+  currentTour = type;
+  currentStep = 0;
+  tourSteps = TOURS[type];
+  renderStep();
+  document.getElementById('overlay').classList.remove('hidden');
+}
+
+function renderStep() {
+  const step = tourSteps[currentStep];
+  const total = tourSteps.length;
+  
+  // Show section if needed
+  if(step.section) showSection(step.section);
+  
+  // Highlight element
+  const ring = document.getElementById('highlight-ring');
+  if(step.highlight) {
+    const el = document.getElementById(step.highlight);
+    if(el) {
+      const rect = el.getBoundingClientRect();
+      ring.style.left = (rect.left - 8) + 'px';
+      ring.style.top = (rect.top - 8) + 'px';
+      ring.style.width = (rect.width + 16) + 'px';
+      ring.style.height = (rect.height + 16) + 'px';
+      ring.classList.remove('hidden');
+    }
+  } else {
+    ring.classList.add('hidden');
+  }
+
+  // Persona label
+  const personaMap = {
+    doctor: { label: '👨‍⚕️ Para el Médico', cls: 'persona-doctor' },
+    asistente: { label: '👩‍💼 Para Asistentes', cls: 'persona-asistente' },
+    ambos: { label: '👥 Para Todos', cls: 'persona-ambos' }
+  };
+  const p = personaMap[step.persona] || personaMap.ambos;
+
+  // Progress dots
+  const dots = Array.from({length: total}, (_, i) => {
+    const cls = i < currentStep ? 'done' : (i === currentStep ? 'active' : '');
+    return `<div class="prog-dot ${cls}"></div>`;
+  }).join('');
+
+  const isLast = currentStep === total - 1;
+  const isFirst = currentStep === 0;
+
+  const card = document.getElementById('tour-card');
+  card.innerHTML = `
+    <div class="tour-badge">${step.badge}</div>
+    <div class="tour-persona"><span class="persona-tag ${p.cls}">${p.label}</span></div>
+    <h2>${step.title}</h2>
+    ${step.content}
+    <div class="tour-progress">${dots}</div>
+    <div class="tour-nav">
+      <span class="step-counter">Paso ${currentStep + 1} de ${total}</span>
+      <div style="display:flex;gap:8px">
+        ${!isFirst ? `<button class="btn-nav btn-prev" onclick="prevStep()">← Anterior</button>` : ''}
+        ${isLast ? 
+          `<button class="btn-nav btn-finish" onclick="finishTour()">✓ Finalizar tour</button>` :
+          `<button class="btn-nav btn-next" onclick="nextStep()">Siguiente →</button>`
+        }
+      </div>
+    </div>
+  `;
+
+  // Animate card
+  card.style.animation = 'none';
+  requestAnimationFrame(() => { card.style.animation = 'cardIn 0.35s cubic-bezier(.34,1.56,.64,1)'; });
+}
+
+function nextStep() {
+  if(currentStep < tourSteps.length - 1) { currentStep++; renderStep(); }
+}
+function prevStep() {
+  if(currentStep > 0) { currentStep--; renderStep(); }
+}
+function finishTour() {
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('highlight-ring').classList.add('hidden');
+  showWelcome();
+}
+
+function showWelcome() {
+  const card = document.getElementById('tour-card');
+  document.getElementById('highlight-ring').classList.add('hidden');
+  card.innerHTML = `
+    <div id="welcome-card">
+      <div style="font-size:48px;margin-bottom:12px">🏥</div>
+      <h1>Tour Guiado Interactivo</h1>
+      <p>Selecciona el tour según tu rol para aprender a usar<br><strong>Lista de Espera IA Médica</strong> en minutos.</p>
+      <div class="tour-selector">
+        <div class="selector-btn" onclick="startTour('doctor')">
+          <div class="sel-icon">👨‍⚕️</div>
+          <div class="sel-title">Soy Médico</div>
+          <div class="sel-sub">Visibilidad, reportes y confianza en la IA</div>
+        </div>
+        <div class="selector-btn" onclick="startTour('asistente')">
+          <div class="sel-icon">👩‍💼</div>
+          <div class="sel-title">Soy Asistente</div>
+          <div class="sel-sub">Gestión diaria, pacientes y WhatsApp</div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--muted)">El tour toma menos de 3 minutos · Puedes repetirlo cuando quieras</p>
+    </div>
+  `;
+  document.getElementById('overlay').classList.remove('hidden');
+}
+
+showWelcome();
+</script>
+</body>
+</html>
