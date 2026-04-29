@@ -3,934 +3,829 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tour Guiado · Lista de Espera IA Médica</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<title>Lista de Espera · Dr. Carlos Flores Contreras</title>
 <style>
   :root {
-    --teal: #0d9488;
-    --teal-light: #99f6e4;
-    --teal-dark: #0f766e;
-    --navy: #0f172a;
-    --slate: #334155;
-    --muted: #64748b;
-    --bg: #f8fafc;
-    --white: #ffffff;
-    --urgent: #ef4444;
-    --gold: #f59e0b;
-    --card-shadow: 0 4px 24px rgba(13,148,136,0.10);
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #e2e0d8;
+    --border2: #ccc9be;
+    --text: #1a1916;
+    --text2: #6b6860;
+    --text3: #9c9a93;
+    --blue: #185FA5;
+    --blue-bg: #E6F1FB;
+    --green: #3B6D11;
+    --green-bg: #EAF3DE;
+    --red: #A32D2D;
+    --red-bg: #FCEBEB;
+    --amber: #854F0B;
+    --amber-bg: #FAEEDA;
+    --gray: #5F5E5A;
+    --gray-bg: #F1EFE8;
+    --radius: 10px;
+    --radius-sm: 6px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--navy); min-height: 100vh; }
-
-  /* OVERLAY */
-  #overlay {
-    position: fixed; inset: 0; background: rgba(15,23,42,0.72); z-index: 1000;
-    display: flex; align-items: center; justify-content: center;
-    backdrop-filter: blur(4px); transition: opacity 0.4s;
-  }
-  #overlay.hidden { opacity: 0; pointer-events: none; }
-
-  /* TOOLTIP CARD */
-  .tour-card {
-    background: var(--white); border-radius: 20px; padding: 32px 36px;
-    max-width: 460px; width: 90%; box-shadow: 0 24px 80px rgba(13,148,136,0.25);
-    position: relative; animation: cardIn 0.35s cubic-bezier(.34,1.56,.64,1);
-  }
-  @keyframes cardIn { from { transform: scale(0.85) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
-
-  .tour-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: var(--teal-light); color: var(--teal-dark);
-    font-size: 11px; font-weight: 600; letter-spacing: 1px;
-    padding: 4px 12px; border-radius: 999px; text-transform: uppercase; margin-bottom: 14px;
-  }
-  .tour-card h2 { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--navy); margin-bottom: 10px; line-height: 1.3; }
-  .tour-card p { font-size: 14.5px; color: var(--slate); line-height: 1.65; margin-bottom: 18px; }
-  .tour-card ul { padding-left: 18px; margin-bottom: 18px; }
-  .tour-card ul li { font-size: 13.5px; color: var(--slate); margin-bottom: 6px; line-height: 1.5; }
-  .tour-card ul li strong { color: var(--teal-dark); }
-
-  .tour-persona {
-    display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap;
-  }
-  .persona-tag {
-    padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 600;
-    letter-spacing: 0.5px; text-transform: uppercase;
-  }
-  .persona-doctor { background: #eff6ff; color: #1d4ed8; }
-  .persona-asistente { background: #fef3c7; color: #92400e; }
-  .persona-ambos { background: #f3e8ff; color: #7e22ce; }
-
-  .tour-progress {
-    display: flex; gap: 6px; margin-bottom: 20px; align-items: center;
-  }
-  .prog-dot {
-    width: 8px; height: 8px; border-radius: 50%; background: #e2e8f0; transition: all 0.3s;
-  }
-  .prog-dot.active { background: var(--teal); width: 22px; border-radius: 4px; }
-  .prog-dot.done { background: var(--teal-light); }
-
-  .tour-nav {
-    display: flex; gap: 10px; justify-content: space-between; align-items: center;
-    padding-top: 16px; border-top: 1px solid #f1f5f9;
-  }
-  .tour-nav .step-counter { font-size: 12px; color: var(--muted); }
-  .btn-nav {
-    padding: 10px 22px; border-radius: 10px; font-size: 13.5px; font-weight: 600;
-    cursor: pointer; border: none; transition: all 0.2s; font-family: 'DM Sans', sans-serif;
-  }
-  .btn-prev { background: #f1f5f9; color: var(--slate); }
-  .btn-prev:hover { background: #e2e8f0; }
-  .btn-next { background: var(--teal); color: white; }
-  .btn-next:hover { background: var(--teal-dark); transform: translateX(2px); }
-  .btn-finish { background: var(--gold); color: var(--navy); }
-  .btn-finish:hover { background: #d97706; }
-
-  /* HIGHLIGHT RING */
-  .highlight-ring {
-    position: fixed; border: 3px solid var(--teal); border-radius: 14px;
-    box-shadow: 0 0 0 4000px rgba(15,23,42,0.55), 0 0 30px rgba(13,148,136,0.5);
-    pointer-events: none; z-index: 999; transition: all 0.4s cubic-bezier(.25,.8,.25,1);
-  }
-
-  /* APP MOCKUP */
-  #app-demo {
-    position: fixed; inset: 0; overflow-y: auto; overflow-x: hidden;
-    background: var(--bg); padding: 0;
-  }
-
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  
+  /* LAYOUT */
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 1.25rem 1rem; display: flex; flex-direction: column; gap: 4px; z-index: 100; }
+  .main { margin-left: 220px; padding: 1.5rem; min-height: 100vh; }
+  
   /* SIDEBAR */
-  .demo-layout { display: flex; min-height: 100vh; }
-  .sidebar {
-    width: 220px; min-height: 100vh; background: var(--navy);
-    padding: 24px 16px; position: fixed; left: 0; top: 0; bottom: 0;
-    display: flex; flex-direction: column; gap: 4px; z-index: 10;
-  }
-  .sidebar-logo {
-    padding: 0 8px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px;
-  }
-  .sidebar-logo .doc-name { font-family: 'Playfair Display', serif; color: white; font-size: 14px; font-weight: 700; }
-  .sidebar-logo .doc-spec { font-size: 11px; color: #94a3b8; margin-top: 2px; }
-  .sidebar-item {
-    padding: 9px 12px; border-radius: 8px; color: #94a3b8; font-size: 12.5px;
-    cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;
-  }
-  .sidebar-item:hover, .sidebar-item.active { background: rgba(13,148,136,0.2); color: var(--teal-light); }
-  .sidebar-item .icon { font-size: 14px; }
-  .sidebar-badge {
-    margin-left: auto; background: var(--urgent); color: white;
-    font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 999px;
-  }
-  .turnos-section { padding: 16px 8px 8px; }
-  .turnos-label { font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-  .turno-chip {
-    padding: 6px 10px; border-radius: 6px; font-size: 11px; color: #94a3b8;
-    border: 1px solid rgba(255,255,255,0.07); margin-bottom: 4px; cursor: pointer;
-    transition: all 0.2s;
-  }
-  .turno-chip:hover { border-color: var(--teal); color: var(--teal-light); }
-  .turno-chip.active { background: rgba(13,148,136,0.15); border-color: var(--teal); color: var(--teal-light); }
+  .logo { padding: 0.5rem 0.75rem 1rem; }
+  .logo-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.3; }
+  .logo-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .nav-label { font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; padding: 0.75rem 0.75rem 0.25rem; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; color: var(--text2); border: none; background: none; width: 100%; text-align: left; transition: all 0.12s; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--blue-bg); color: var(--blue); font-weight: 500; }
+  .nav-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .nav-badge { margin-left: auto; font-size: 10px; font-weight: 600; background: var(--red-bg); color: var(--red); padding: 1px 6px; border-radius: 99px; }
+  .turno-chips { display: flex; flex-direction: column; gap: 4px; padding: 0.75rem; margin-top: auto; border-top: 1px solid var(--border); }
+  .turno-chip { font-size: 11px; padding: 4px 8px; border-radius: var(--radius-sm); font-weight: 500; }
+  
+  /* HEADER */
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+  .page-title { font-size: 20px; font-weight: 600; }
+  .page-sub { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  
+  /* METRICS */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+  .metric-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+  .metric-val { font-size: 28px; font-weight: 600; margin-top: 4px; line-height: 1; }
+  .metric-sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
+  
+  /* AI PANEL */
+  .ai-panel { background: linear-gradient(135deg, #E6F1FB 0%, #f0efe9 100%); border: 1px solid #b5d4f4; border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+  .ai-header { display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem; }
+  .ai-pulse { width: 8px; height: 8px; border-radius: 50%; background: #1D9E75; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }
+  .ai-title-text { font-size: 13px; font-weight: 600; color: var(--blue); }
+  .ai-body-text { font-size: 12px; color: var(--text2); margin-bottom: 10px; }
+  .ai-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .ai-card { background: var(--surface); border-radius: var(--radius-sm); padding: 0.75rem; border: 1px solid var(--border); }
+  .ai-rank { font-size: 10px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .ai-patient-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .ai-reason { font-size: 11px; color: var(--text2); line-height: 1.4; margin-bottom: 8px; }
+  .ai-score { display: flex; align-items: center; gap: 6px; }
+  .score-bar { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 2px; background: var(--blue); }
+  .score-val { font-size: 11px; font-weight: 600; color: var(--blue); min-width: 30px; text-align: right; }
+  
+  /* SECTION */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+  .section-title { font-size: 12px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+  
+  /* PATIENT CARDS */
+  .patient-list { display: flex; flex-direction: column; gap: 6px; }
+  .patient-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.875rem 1rem; display: flex; align-items: flex-start; gap: 12px; transition: border-color 0.15s, box-shadow 0.15s; cursor: pointer; }
+  .patient-card:hover { border-color: var(--border2); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .patient-card.is-urgent { border-left: 3px solid #E24B4A; }
+  .patient-card.is-suggested { border: 2px solid var(--blue); background: #f5f9ff; }
+  .pat-av { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .pat-info { flex: 1; min-width: 0; }
+  .pat-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .pat-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .pat-note { font-size: 12px; color: var(--text2); margin-top: 4px; font-style: italic; }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .tag { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+  .tag-urgente { background: var(--red-bg); color: var(--red); }
+  .tag-pendiente { background: var(--gray-bg); color: var(--gray); }
+  .tag-agendado { background: var(--green-bg); color: var(--green); }
+  .tag-alta { background: var(--blue-bg); color: var(--blue); }
+  .tag-turno { background: var(--amber-bg); color: var(--amber); }
+  .tag-flex { background: var(--green-bg); color: var(--green); }
+  .pat-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; flex-direction: column; }
+  .btn { font-size: 11px; padding: 5px 12px; border: 1px solid var(--border2); border-radius: var(--radius-sm); cursor: pointer; background: var(--surface); color: var(--text2); white-space: nowrap; font-family: inherit; transition: all 0.12s; }
+  .btn:hover { background: var(--surface2); }
+  .btn-blue { background: var(--blue); color: white; border-color: var(--blue); }
+  .btn-blue:hover { background: #0C447C; }
+  .btn-green { background: var(--green); color: white; border-color: var(--green); }
+  .btn-green:hover { background: #27500A; }
+  select.btn { appearance: none; padding-right: 20px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b6860'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 6px center; }
+  
+  /* TABS */
+  .tabs { display: flex; gap: 2px; background: var(--surface2); border-radius: var(--radius); padding: 4px; margin-bottom: 1.25rem; }
+  .tab { flex: 1; padding: 8px 6px; font-size: 12px; font-weight: 500; border: none; border-radius: var(--radius-sm); cursor: pointer; background: transparent; color: var(--text2); font-family: inherit; transition: all 0.12s; }
+  .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
-  /* MAIN */
-  .main-content { margin-left: 220px; padding: 28px 32px; min-height: 100vh; }
+  /* PANELS */
+  .panel { display: none; }
+  .panel.active { display: block; }
+  
+  /* CANCELACION */
+  .slot-card { background: var(--surface); border: 2px dashed var(--border2); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+  .slot-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1rem; }
+  .slot-date { font-size: 16px; font-weight: 700; }
+  .slot-time { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  .slot-badge { background: var(--blue-bg); color: var(--blue); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 99px; }
 
-  /* TOPBAR */
-  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-  .topbar h1 { font-family: 'Playfair Display', serif; font-size: 24px; color: var(--navy); }
-  .topbar-date { font-size: 13px; color: var(--muted); }
-  .btn-add {
-    background: var(--teal); color: white; padding: 9px 18px; border-radius: 9px;
-    font-size: 13px; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;
-  }
+  /* FORM */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-field { display: flex; flex-direction: column; gap: 5px; }
+  .form-label { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; }
+  input, select, textarea { font-family: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); outline: none; transition: border-color 0.15s; }
+  input:focus, select:focus, textarea:focus { border-color: var(--blue); }
+  textarea { resize: vertical; min-height: 70px; }
 
-  /* STAT CARDS */
-  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
-  .stat-card {
-    background: white; border-radius: 14px; padding: 18px 20px;
-    box-shadow: var(--card-shadow); border: 1px solid #f1f5f9;
-  }
-  .stat-card .stat-num { font-size: 28px; font-weight: 700; color: var(--navy); }
-  .stat-card .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .stat-card.urgent .stat-num { color: var(--urgent); }
+  /* WA SIMULATOR */
+  .wa-container { background: #ECE5DD; border-radius: var(--radius); padding: 1rem; position: relative; }
+  .wa-header { background: #075E54; border-radius: var(--radius) var(--radius) 0 0; padding: 10px 14px; display: flex; align-items: center; gap: 10px; margin: -1rem -1rem 1rem; }
+  .wa-av { width: 36px; height: 36px; border-radius: 50%; background: #25D366; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: white; }
+  .wa-name { font-size: 14px; font-weight: 600; color: white; }
+  .wa-status { font-size: 11px; color: #aaa; }
+  .wa-messages { display: flex; flex-direction: column; gap: 6px; min-height: 80px; }
+  .wa-bubble { background: white; border-radius: 4px 12px 12px 12px; padding: 10px 12px; max-width: 85%; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+  .wa-bubble.sent { background: #DCF8C6; border-radius: 12px 4px 12px 12px; align-self: flex-end; }
+  .wa-text { font-size: 13px; color: #111; line-height: 1.5; }
+  .wa-time { font-size: 10px; color: #999; text-align: right; margin-top: 4px; }
+  .wa-typing { display: flex; align-items: center; gap: 4px; padding: 8px; }
+  .dot-flashing { width: 6px; height: 6px; border-radius: 50%; background: #aaa; animation: dot 1.2s infinite; }
+  .dot-flashing:nth-child(2) { animation-delay: 0.2s; }
+  .dot-flashing:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dot { 0%,100%{opacity:0.3} 50%{opacity:1} }
+  
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 1.25rem; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+  .stat-label { font-size: 11px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+  .stat-val { font-size: 28px; font-weight: 700; }
+  .bar-group { margin-top: 10px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .bar-label { font-size: 11px; color: var(--text2); width: 70px; flex-shrink: 0; }
+  .bar { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  .bar-val { font-size: 11px; font-weight: 600; color: var(--text); min-width: 32px; text-align: right; }
 
-  /* AI BLOCK */
-  .ai-block {
-    background: linear-gradient(135deg, #0f172a 0%, #134e4a 100%);
-    border-radius: 16px; padding: 22px 24px; margin-bottom: 24px; color: white;
-  }
-  .ai-title { font-size: 13px; color: var(--teal-light); font-weight: 600; letter-spacing: 0.5px; margin-bottom: 14px; }
-  .ai-candidates { display: flex; gap: 12px; }
-  .ai-candidate {
-    background: rgba(255,255,255,0.07); border-radius: 10px; padding: 12px 16px; flex: 1;
-    border: 1px solid rgba(99,240,220,0.15);
-  }
-  .ai-rank { font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
-  .ai-name { font-size: 13px; font-weight: 600; color: white; margin-bottom: 4px; }
-  .ai-reason { font-size: 11px; color: #94a3b8; line-height: 1.4; }
-  .ai-score {
-    display: inline-block; background: var(--teal); color: white;
-    font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-top: 6px;
-  }
+  /* AI CHAT */
+  .ai-chat-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .ai-chat-header { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 0.75rem 1rem; display: flex; align-items: center; gap: 8px; }
+  .ai-chat-messages { padding: 1rem; min-height: 200px; max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  .msg-ai { background: var(--blue-bg); border-radius: 4px 12px 12px 12px; padding: 10px 14px; max-width: 85%; font-size: 13px; color: var(--text); line-height: 1.6; }
+  .msg-user { background: var(--surface2); border-radius: 12px 4px 12px 12px; padding: 10px 14px; max-width: 75%; align-self: flex-end; font-size: 13px; color: var(--text); }
+  .ai-chat-input { display: flex; border-top: 1px solid var(--border); }
+  .ai-chat-input input { flex: 1; border: none; border-radius: 0; padding: 12px 14px; font-size: 13px; }
+  .ai-chat-input button { padding: 10px 18px; background: var(--blue); color: white; border: none; cursor: pointer; font-size: 13px; font-family: inherit; }
 
-  /* PATIENT LIST */
-  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-  .section-title { font-size: 15px; font-weight: 600; color: var(--navy); }
-  .filter-tabs { display: flex; gap: 6px; }
-  .filter-tab {
-    padding: 5px 12px; border-radius: 6px; font-size: 12px; color: var(--muted);
-    background: #f1f5f9; border: none; cursor: pointer; transition: all 0.2s;
-  }
-  .filter-tab.active { background: var(--teal); color: white; }
+  /* BD DOCS */
+  .bd-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem; overflow: hidden; }
+  .bd-table-name { background: var(--surface2); padding: 0.75rem 1rem; font-size: 13px; font-weight: 700; color: var(--text); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .bd-table-tag { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--blue-bg); color: var(--blue); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 7px 12px; background: var(--surface2); color: var(--text3); font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text2); vertical-align: top; }
+  td:first-child { color: var(--text); font-weight: 500; }
+  tr:last-child td { border-bottom: none; }
+  .field-type { background: var(--amber-bg); color: var(--amber); font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px; }
 
-  .patient-card {
-    background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 10px;
-    border: 1px solid #f1f5f9; display: flex; align-items: center; gap: 14px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.2s;
-  }
-  .patient-card:hover { border-color: var(--teal-light); transform: translateX(2px); }
-  .avatar {
-    width: 40px; height: 40px; border-radius: 10px; background: var(--teal);
-    color: white; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  .avatar.urgent { background: var(--urgent); }
-  .avatar.agendado { background: #7c3aed; }
-  .avatar.alta { background: #64748b; }
-  .patient-info { flex: 1; }
-  .patient-name { font-size: 14px; font-weight: 600; color: var(--navy); }
-  .patient-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .patient-note { font-size: 12px; color: var(--slate); margin-top: 3px; font-style: italic; }
-  .status-badge {
-    padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
-  }
-  .badge-urgente { background: #fee2e2; color: var(--urgent); }
-  .badge-pendiente { background: #fef3c7; color: #92400e; }
-  .badge-agendado { background: #ede9fe; color: #7c3aed; }
-  .badge-alta { background: #f1f5f9; color: var(--muted); }
-  .patient-tags { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
-  .tag { font-size: 10px; padding: 2px 8px; border-radius: 4px; background: #f1f5f9; color: var(--muted); }
-  .wa-btn {
-    background: #25d366; color: white; border: none; border-radius: 7px;
-    padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;
-  }
-
-  /* CANCELACION MODULE */
-  .cancel-block {
-    background: white; border-radius: 16px; padding: 22px 24px; margin-bottom: 24px;
-    border: 1px solid #f1f5f9; box-shadow: var(--card-shadow);
-  }
-  .cancel-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-  .cancel-icon { font-size: 22px; }
-  .cancel-title { font-size: 15px; font-weight: 600; color: var(--navy); }
-  .cancel-slot {
-    background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px;
-    padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #9a3412;
-  }
-
-  /* STATS PAGE */
-  .stats-page { display: none; }
-  .chart-bar-container { margin-top: 16px; }
-  .bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-  .bar-label { font-size: 12px; color: var(--muted); width: 90px; text-align: right; }
-  .bar-track { flex: 1; height: 10px; background: #f1f5f9; border-radius: 5px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 5px; background: var(--teal); transition: width 1s; }
-  .bar-fill.urgent { background: var(--urgent); }
-  .bar-value { font-size: 12px; color: var(--navy); font-weight: 600; width: 30px; }
-
-  /* FORM PAGE */
-  .form-block { display: none; background: white; border-radius: 16px; padding: 24px; border: 1px solid #f1f5f9; box-shadow: var(--card-shadow); }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .form-group { display: flex; flex-direction: column; gap: 5px; }
-  .form-group label { font-size: 12px; font-weight: 600; color: var(--slate); }
-  .form-group input, .form-group select, .form-group textarea {
-    padding: 9px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px;
-    font-family: 'DM Sans', sans-serif; color: var(--navy); transition: border 0.2s;
-  }
-  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-    outline: none; border-color: var(--teal);
-  }
-  .form-group.full { grid-column: 1 / -1; }
-  .btn-save {
-    background: var(--teal); color: white; padding: 11px 24px; border-radius: 9px;
-    font-size: 13.5px; font-weight: 600; border: none; cursor: pointer; margin-top: 16px;
-  }
-
-  /* TOUR SELECTOR */
-  .tour-selector {
-    display: flex; gap: 12px; margin-bottom: 22px;
-  }
-  .selector-btn {
-    flex: 1; padding: 14px; border-radius: 12px; border: 2px solid #e2e8f0;
-    cursor: pointer; text-align: center; transition: all 0.2s; background: white;
-    font-family: 'DM Sans', sans-serif;
-  }
-  .selector-btn:hover { border-color: var(--teal); }
-  .selector-btn.selected { border-color: var(--teal); background: #f0fdfa; }
-  .selector-btn .sel-icon { font-size: 28px; margin-bottom: 8px; }
-  .selector-btn .sel-title { font-size: 14px; font-weight: 600; color: var(--navy); }
-  .selector-btn .sel-sub { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
-
-  /* WELCOME SCREEN */
-  #welcome-card {
-    text-align: center;
-  }
-  #welcome-card h1 { font-family: 'Playfair Display', serif; font-size: 26px; color: var(--navy); margin-bottom: 10px; }
-  #welcome-card p { font-size: 14.5px; color: var(--slate); line-height: 1.6; margin-bottom: 22px; }
-
-  .hidden { display: none !important; }
-
-  /* WHATSAPP PREVIEW */
-  .wa-preview {
-    background: #e5ddd5; border-radius: 12px; padding: 16px; margin-top: 12px;
-  }
-  .wa-bubble {
-    background: white; border-radius: 12px 12px 12px 2px; padding: 12px 14px;
-    max-width: 85%; font-size: 13px; line-height: 1.55; color: #1a1a1a; box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-  }
-  .wa-time { font-size: 10px; color: #8b9a8c; text-align: right; margin-top: 4px; }
-
-  /* AIRTABLE TABLE */
-  .airtable-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12.5px; }
-  .airtable-table th { background: #f8fafc; color: var(--muted); font-weight: 600; padding: 9px 12px; text-align: left; border-bottom: 2px solid #e2e8f0; }
-  .airtable-table td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; color: var(--slate); }
-  .airtable-table tr:hover td { background: #f8fafc; }
-
-  /* Prompt viewer */
-  .prompt-block {
-    background: var(--navy); border-radius: 12px; padding: 20px; overflow-x: auto;
-    font-family: 'Courier New', monospace; font-size: 11px; color: #a8e6cf; line-height: 1.7;
-    max-height: 300px; overflow-y: auto;
-  }
-
-  @media (max-width: 900px) {
-    .sidebar { display: none; }
-    .main-content { margin-left: 0; padding: 16px; }
-    .stats-row { grid-template-columns: repeat(2, 1fr); }
-    .ai-candidates { flex-direction: column; }
-    .tour-card { padding: 22px 20px; }
-  }
+  /* PROMPT DOC */
+  .prompt-box { background: #1a1916; border-radius: var(--radius); padding: 1.25rem; font-family: 'Courier New', monospace; font-size: 12px; color: #d4d0c4; line-height: 1.7; white-space: pre-wrap; overflow-x: auto; }
+  .prompt-comment { color: #639922; }
+  .prompt-key { color: #5DCAA5; }
+  .prompt-val { color: #FAC775; }
+  
+  .copy-btn { font-size: 11px; padding: 4px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm); cursor: pointer; background: var(--surface); color: var(--text2); font-family: inherit; }
+  .copy-btn:hover { background: var(--surface2); }
 </style>
 </head>
 <body>
 
-<!-- APP DEMO (background) -->
-<div id="app-demo">
-  <div class="demo-layout">
-    <!-- SIDEBAR -->
-    <nav class="sidebar" id="sidebar">
-      <div class="sidebar-logo">
-        <div class="doc-name">Dr. Carlos Flores</div>
-        <div class="doc-spec">Psiquiatría · Sistema de espera</div>
-      </div>
-      <div class="sidebar-item active" onclick="showSection('lista')" id="nav-lista">
-        <span class="icon">📋</span> Lista de espera
-        <span class="sidebar-badge">3</span>
-      </div>
-      <div class="sidebar-item" onclick="showSection('cancelacion')" id="nav-cancelacion">
-        <span class="icon">❌</span> Cancelación + IA
-      </div>
-      <div class="sidebar-item" onclick="showSection('agregar')" id="nav-agregar">
-        <span class="icon">➕</span> Agregar paciente
-      </div>
-      <div class="sidebar-item" onclick="showSection('whatsapp')" id="nav-whatsapp">
-        <span class="icon">💬</span> Simulador WhatsApp
-      </div>
-      <div class="sidebar-item" onclick="showSection('reportes')" id="nav-reportes">
-        <span class="icon">📊</span> Reportes & Docs
-      </div>
-      <div class="sidebar-item" onclick="showSection('airtable')" id="nav-airtable">
-        <span class="icon">🗄️</span> Estructura Airtable
-      </div>
-      <div class="sidebar-item" onclick="showSection('prompt')" id="nav-prompt">
-        <span class="icon">🤖</span> Prompt IA
-      </div>
-      <div class="turnos-section">
-        <div class="turnos-label">Turno activo</div>
-        <div class="turno-chip active">Mañana · L-V · 8-14h</div>
-        <div class="turno-chip">Tarde · L-V · 15-20h</div>
-        <div class="turno-chip">Sábado · 9-14h</div>
-      </div>
-    </nav>
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">Dr. Carlos Flores Contreras</div>
+    <div class="logo-sub">Psiquiatría · Sistema de espera</div>
+  </div>
+  <span class="nav-label">Gestión</span>
+  <button class="nav-item active" onclick="showSection('lista')">
+    <div class="nav-dot" style="background:#5F5E5A"></div>Lista de espera
+    <span class="nav-badge">3 urgentes</span>
+  </button>
+  <button class="nav-item" onclick="showSection('cancelacion')">
+    <div class="nav-dot" style="background:#E24B4A"></div>Cancelación + IA
+  </button>
+  <button class="nav-item" onclick="showSection('agregar')">
+    <div class="nav-dot" style="background:#1D9E75"></div>Agregar paciente
+  </button>
+  <button class="nav-item" onclick="showSection('whatsapp')">
+    <div class="nav-dot" style="background:#25D366"></div>Simulador WhatsApp
+  </button>
+  <span class="nav-label">Reportes & Docs</span>
+  <button class="nav-item" onclick="showSection('stats')">
+    <div class="nav-dot" style="background:#185FA5"></div>Estadísticas
+  </button>
+  <button class="nav-item" onclick="showSection('bd')">
+    <div class="nav-dot" style="background:#854F0B"></div>Estructura Airtable
+  </button>
+  <button class="nav-item" onclick="showSection('prompt')">
+    <div class="nav-dot" style="background:#3B6D11"></div>Prompt IA
+  </button>
+  <div class="turno-chips">
+    <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Turno activo</div>
+    <div class="turno-chip" style="background:var(--green-bg);color:var(--green);">Mañana · L-V · 8-14h</div>
+    <div class="turno-chip" style="background:var(--blue-bg);color:var(--blue);margin-top:2px;">Tarde · L-V · 15-20h</div>
+    <div class="turno-chip" style="background:var(--amber-bg);color:var(--amber);margin-top:2px;">Sábado · 9-14h</div>
+  </div>
+</nav>
 
-    <!-- MAIN -->
-    <main class="main-content">
-      <!-- SECTION: LISTA -->
-      <div id="section-lista">
-        <div class="topbar">
-          <div>
-            <h1 id="topbar-title">Lista de espera</h1>
-            <div class="topbar-date">28 de abril 2026 · Asistente turno mañana</div>
-          </div>
-          <button class="btn-add" id="btn-add-patient">➕ Agregar paciente</button>
+<!-- MAIN -->
+<main class="main">
+
+  <!-- ========== LISTA DE ESPERA ========== -->
+  <div id="section-lista" class="panel active">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Lista de espera</div>
+        <div class="page-sub">28 de abril 2026 · Asistente turno mañana</div>
+      </div>
+      <button class="btn btn-blue" onclick="showSection('agregar')">+ Agregar paciente</button>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">En espera</div><div class="metric-val">12</div><div class="metric-sub">pacientes activos</div></div>
+      <div class="metric"><div class="metric-label">Urgentes</div><div class="metric-val" style="color:var(--red)">3</div><div class="metric-sub">requieren pronto</div></div>
+      <div class="metric"><div class="metric-label">Agendados</div><div class="metric-val" style="color:var(--green)">5</div><div class="metric-sub">próximas citas</div></div>
+      <div class="metric"><div class="metric-label">Espera prom.</div><div class="metric-val">18</div><div class="metric-sub">días en lista</div></div>
+    </div>
+
+    <div class="ai-panel">
+      <div class="ai-header">
+        <div class="ai-pulse"></div>
+        <span class="ai-title-text">Análisis IA · Propuesta de prioridad para hoy</span>
+      </div>
+      <div class="ai-body-text">La IA analizó urgencia clínica, días en lista y compatibilidad de horario. Contactar en este orden:</div>
+      <div class="ai-cards">
+        <div class="ai-card">
+          <div class="ai-rank">1ª prioridad</div>
+          <div class="ai-patient-name">Martínez Rivas, Sofía</div>
+          <div class="ai-reason">Crisis de ansiedad activa · 34 días en lista · disponible mañanas</div>
+          <div class="ai-score"><div class="score-bar"><div class="score-fill" style="width:96%"></div></div><div class="score-val">96%</div></div>
         </div>
-
-        <div class="stats-row" id="stats-row">
-          <div class="stat-card">
-            <div class="stat-num">12</div>
-            <div class="stat-label">pacientes activos</div>
-          </div>
-          <div class="stat-card urgent">
-            <div class="stat-num">3</div>
-            <div class="stat-label">urgentes</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-num">5</div>
-            <div class="stat-label">agendados</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-num">18</div>
-            <div class="stat-label">días prom. de espera</div>
-          </div>
+        <div class="ai-card">
+          <div class="ai-rank">2ª prioridad</div>
+          <div class="ai-patient-name">Herrera Díaz, Marco</div>
+          <div class="ai-reason">Trastorno del sueño · 28 días · cualquier horario</div>
+          <div class="ai-score"><div class="score-bar"><div class="score-fill" style="width:78%"></div></div><div class="score-val">78%</div></div>
         </div>
-
-        <div class="ai-block" id="ai-block">
-          <div class="ai-title">🤖 Análisis IA · Propuesta de prioridad para hoy</div>
-          <div class="ai-candidates">
-            <div class="ai-candidate">
-              <div class="ai-rank">1ª prioridad</div>
-              <div class="ai-name">Martínez Rivas, Sofía</div>
-              <div class="ai-reason">Crisis de ansiedad activa · 34 días en lista · disponible mañanas</div>
-              <div class="ai-score">96%</div>
-            </div>
-            <div class="ai-candidate">
-              <div class="ai-rank">2ª prioridad</div>
-              <div class="ai-name">Herrera Díaz, Marco</div>
-              <div class="ai-reason">Trastorno del sueño · 28 días · cualquier horario</div>
-              <div class="ai-score">78%</div>
-            </div>
-            <div class="ai-candidate">
-              <div class="ai-rank">3ª prioridad</div>
-              <div class="ai-name">Vázquez León, Carmen</div>
-              <div class="ai-reason">Episodio depresivo · 21 días · solo sábados</div>
-              <div class="ai-score">71%</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="section-header">
-          <div class="section-title">Todos los pacientes</div>
-          <div class="filter-tabs" id="filter-tabs">
-            <button class="filter-tab active">Todos</button>
-            <button class="filter-tab">Urgentes</button>
-            <button class="filter-tab">Pendientes</button>
-            <button class="filter-tab">Agendados</button>
-            <button class="filter-tab">Alta</button>
-          </div>
-        </div>
-
-        <div id="patient-list">
-          <div class="patient-card">
-            <div class="avatar urgent">SM</div>
-            <div class="patient-info">
-              <div class="patient-name">Martínez Rivas, Sofía</div>
-              <div class="patient-meta">614-155-0234 · Ingresó: 25 Mar · 34 días en lista</div>
-              <div class="patient-note">Crisis de ansiedad severa, reportada por familiar</div>
-              <div class="patient-tags">
-                <span class="tag">Prefiere mañana</span>
-                <span class="tag">Turno mañana</span>
-              </div>
-            </div>
-            <span class="status-badge badge-urgente">Urgente</span>
-            <button class="wa-btn">💬 WhatsApp</button>
-          </div>
-          <div class="patient-card">
-            <div class="avatar urgent">VL</div>
-            <div class="patient-info">
-              <div class="patient-name">Vázquez León, Carmen</div>
-              <div class="patient-meta">614-322-0987 · Ingresó: 7 Abr · 21 días en lista</div>
-              <div class="patient-note">Episodio depresivo, dificultad funcional reportada</div>
-              <div class="patient-tags"><span class="tag">Solo sábados</span></div>
-            </div>
-            <span class="status-badge badge-urgente">Urgente</span>
-            <button class="wa-btn">💬 WhatsApp</button>
-          </div>
-          <div class="patient-card">
-            <div class="avatar">HD</div>
-            <div class="patient-info">
-              <div class="patient-name">Herrera Díaz, Marco</div>
-              <div class="patient-meta">614-488-1123 · Ingresó: 31 Mar · 28 días en lista</div>
-              <div class="patient-note">Insomnio crónico, ansiedad leve asociada</div>
-              <div class="patient-tags"><span class="tag">Horario flexible</span></div>
-            </div>
-            <span class="status-badge badge-pendiente">Pendiente</span>
-            <button class="wa-btn">💬 WhatsApp</button>
-          </div>
-          <div class="patient-card">
-            <div class="avatar agendado">RG</div>
-            <div class="patient-info">
-              <div class="patient-name">Reyes González, Ana</div>
-              <div class="patient-meta">614-201-3344 · Cita: Viernes 3 May, 11:00 AM</div>
-              <div class="patient-note">Evaluación general, referida por médico familiar</div>
-              <div class="patient-tags"><span class="tag">Tarde</span></div>
-            </div>
-            <span class="status-badge badge-agendado">Agendado</span>
-            <button class="wa-btn">🔔 Recordatorio</button>
-          </div>
-          <div class="patient-card">
-            <div class="avatar alta">LP</div>
-            <div class="patient-info">
-              <div class="patient-name">Luna Pérez, Roberto</div>
-              <div class="patient-meta">Alta: 15 Abr 2026 · Seguimiento en 6 meses</div>
-              <div class="patient-note">Alta médica otorgada.</div>
-            </div>
-            <span class="status-badge badge-alta">Alta médica</span>
-          </div>
+        <div class="ai-card">
+          <div class="ai-rank">3ª prioridad</div>
+          <div class="ai-patient-name">Vázquez León, Carmen</div>
+          <div class="ai-reason">Episodio depresivo · 21 días · solo sábados</div>
+          <div class="ai-score"><div class="score-bar"><div class="score-fill" style="width:71%"></div></div><div class="score-val">71%</div></div>
         </div>
       </div>
+    </div>
 
-      <!-- SECTION: CANCELACION -->
-      <div id="section-cancelacion" class="hidden">
-        <div class="topbar"><h1>Módulo de Cancelación</h1></div>
-        <div class="cancel-block" id="cancel-block">
-          <div class="cancel-header">
-            <span class="cancel-icon">❌</span>
-            <span class="cancel-title">Registrar cancelación y reasignación IA</span>
+    <div class="section-header">
+      <span class="section-title">Todos los pacientes</span>
+      <select class="btn" onchange="filterPatients(this.value)">
+        <option value="todos">Todos los estados</option>
+        <option value="urgente">Urgentes</option>
+        <option value="pendiente">Pendientes</option>
+        <option value="agendado">Agendados</option>
+        <option value="alta">Alta médica</option>
+      </select>
+    </div>
+    <div class="patient-list" id="patient-list">
+      <div class="patient-card is-urgent" data-status="urgente">
+        <div class="pat-av" style="background:var(--red-bg);color:var(--red)">SM</div>
+        <div class="pat-info">
+          <div class="pat-name">Martínez Rivas, Sofía</div>
+          <div class="pat-meta">614-155-0234 · Ingresó: 25 Mar · 34 días en lista</div>
+          <div class="pat-note">Crisis de ansiedad severa, reportada por familiar</div>
+          <div class="tags"><span class="tag tag-urgente">Urgente</span><span class="tag tag-turno">Prefiere mañana</span></div>
+        </div>
+        <div class="pat-actions">
+          <button class="btn btn-blue" onclick="showSection('whatsapp');simularWA('Sofía Martínez','martes 7 de mayo','10:00 AM')">WhatsApp</button>
+          <select class="btn" onchange="cambiarStatus(this)">
+            <option selected>Urgente</option><option>Pendiente</option><option>Agendado</option><option>Alta</option>
+          </select>
+        </div>
+      </div>
+      <div class="patient-card is-urgent" data-status="urgente">
+        <div class="pat-av" style="background:var(--red-bg);color:var(--red)">VL</div>
+        <div class="pat-info">
+          <div class="pat-name">Vázquez León, Carmen</div>
+          <div class="pat-meta">614-322-0987 · Ingresó: 7 Abr · 21 días en lista</div>
+          <div class="pat-note">Episodio depresivo, dificultad funcional reportada</div>
+          <div class="tags"><span class="tag tag-urgente">Urgente</span><span class="tag tag-turno">Solo sábados</span></div>
+        </div>
+        <div class="pat-actions">
+          <button class="btn btn-blue" onclick="showSection('whatsapp');simularWA('Carmen Vázquez','sábado 3 de mayo','10:00 AM')">WhatsApp</button>
+          <select class="btn" onchange="cambiarStatus(this)">
+            <option selected>Urgente</option><option>Pendiente</option><option>Agendado</option><option>Alta</option>
+          </select>
+        </div>
+      </div>
+      <div class="patient-card" data-status="pendiente">
+        <div class="pat-av" style="background:var(--blue-bg);color:var(--blue)">HD</div>
+        <div class="pat-info">
+          <div class="pat-name">Herrera Díaz, Marco</div>
+          <div class="pat-meta">614-488-1123 · Ingresó: 31 Mar · 28 días en lista</div>
+          <div class="pat-note">Insomnio crónico, ansiedad leve asociada</div>
+          <div class="tags"><span class="tag tag-pendiente">Pendiente</span><span class="tag tag-flex">Horario flexible</span></div>
+        </div>
+        <div class="pat-actions">
+          <button class="btn" onclick="showSection('whatsapp');simularWA('Marco Herrera','miércoles 7 de mayo','11:00 AM')">WhatsApp</button>
+          <select class="btn" onchange="cambiarStatus(this)">
+            <option>Urgente</option><option selected>Pendiente</option><option>Agendado</option><option>Alta</option>
+          </select>
+        </div>
+      </div>
+      <div class="patient-card" data-status="agendado">
+        <div class="pat-av" style="background:var(--green-bg);color:var(--green)">RG</div>
+        <div class="pat-info">
+          <div class="pat-name">Reyes González, Ana</div>
+          <div class="pat-meta">614-201-3344 · Cita: Viernes 3 May, 11:00 AM</div>
+          <div class="pat-note">Evaluación general, paciente referida por médico familiar</div>
+          <div class="tags"><span class="tag tag-agendado">Agendado</span><span class="tag tag-turno">Tarde</span></div>
+        </div>
+        <div class="pat-actions">
+          <button class="btn btn-green" onclick="showSection('whatsapp');simularWA('Ana Reyes','viernes 3 de mayo','11:00 AM')">Recordatorio</button>
+          <select class="btn" onchange="cambiarStatus(this)">
+            <option>Urgente</option><option>Pendiente</option><option selected>Agendado</option><option>Alta</option>
+          </select>
+        </div>
+      </div>
+      <div class="patient-card" data-status="alta">
+        <div class="pat-av" style="background:var(--gray-bg);color:var(--gray)">LP</div>
+        <div class="pat-info">
+          <div class="pat-name">Luna Pérez, Roberto</div>
+          <div class="pat-meta">614-566-7788 · Alta: 15 Abr 2026</div>
+          <div class="pat-note">Alta médica otorgada. Seguimiento en 6 meses si es necesario.</div>
+          <div class="tags"><span class="tag tag-alta">Alta médica</span></div>
+        </div>
+        <div class="pat-actions">
+          <span style="font-size:11px;color:var(--text3)">Completado</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== CANCELACION ========== -->
+  <div id="section-cancelacion" class="panel">
+    <div class="page-header">
+      <div><div class="page-title">Módulo de cancelación</div><div class="page-sub">Registra la cancelación y la IA propone quién ocupa el slot</div></div>
+    </div>
+    <div class="slot-card">
+      <div class="slot-header">
+        <div>
+          <div class="slot-date">Martes, 7 de mayo 2026</div>
+          <div class="slot-time">10:00 AM · Turno mañana · Consultorio 3</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:6px;">Canceló: <strong>García Montoya, Pedro</strong> · motivo: viaje de trabajo</div>
+        </div>
+        <div class="slot-badge">Slot disponible</div>
+      </div>
+      <div class="section-header" style="margin-bottom:0.75rem;">
+        <span class="section-title">Propuesta IA para este horario</span>
+      </div>
+      <div class="patient-list">
+        <div class="patient-card is-suggested">
+          <div style="font-size:20px;font-weight:700;color:var(--blue);min-width:28px;text-align:center">1°</div>
+          <div class="pat-info">
+            <div class="pat-name">Martínez Rivas, Sofía</div>
+            <div class="pat-meta">Urgente · disponible mañanas · 34 días esperando · score IA: 96%</div>
+            <div class="ai-score" style="margin-top:6px;"><div class="score-bar"><div class="score-fill" style="width:96%"></div></div><div class="score-val">96%</div></div>
           </div>
-          <div class="cancel-slot">
-            📅 Martes, 7 de mayo 2026 · 10:00 AM · Turno mañana<br>
-            <strong>Canceló: García Montoya, Pedro</strong> · motivo: viaje de trabajo
+          <div class="pat-actions">
+            <button class="btn btn-blue" onclick="showSection('whatsapp');simularWA('Sofía Martínez','martes 7 de mayo','10:00 AM')">Asignar y notificar</button>
           </div>
-          <div class="ai-block" style="margin:0">
-            <div class="ai-title">🤖 Propuesta IA para este horario</div>
-            <div class="ai-candidates">
-              <div class="ai-candidate">
-                <div class="ai-rank">1° Opción</div>
-                <div class="ai-name">Martínez Rivas, Sofía</div>
-                <div class="ai-reason">Urgente · disponible mañanas · 34 días esperando</div>
-                <div class="ai-score">96%</div>
-              </div>
-              <div class="ai-candidate">
-                <div class="ai-rank">2° Opción</div>
-                <div class="ai-name">Herrera Díaz, Marco</div>
-                <div class="ai-reason">Pendiente · horario flexible · 28 días</div>
-                <div class="ai-score">78%</div>
-              </div>
-              <div class="ai-candidate">
-                <div class="ai-rank">3° Opción</div>
-                <div class="ai-name">Torres Medina, Luis</div>
-                <div class="ai-reason">Pendiente · prefiere mañana · 19 días</div>
-                <div class="ai-score">55%</div>
-              </div>
-            </div>
+        </div>
+        <div class="patient-card">
+          <div style="font-size:20px;font-weight:700;color:var(--text3);min-width:28px;text-align:center">2°</div>
+          <div class="pat-info">
+            <div class="pat-name">Herrera Díaz, Marco</div>
+            <div class="pat-meta">Pendiente · horario flexible · 28 días · score IA: 78%</div>
+            <div class="ai-score" style="margin-top:6px;"><div class="score-bar"><div class="score-fill" style="width:78%"></div></div><div class="score-val">78%</div></div>
+          </div>
+          <div class="pat-actions">
+            <button class="btn" onclick="showSection('whatsapp');simularWA('Marco Herrera','martes 7 de mayo','10:00 AM')">Notificar</button>
+          </div>
+        </div>
+        <div class="patient-card">
+          <div style="font-size:20px;font-weight:700;color:var(--text3);min-width:28px;text-align:center">3°</div>
+          <div class="pat-info">
+            <div class="pat-name">Torres Medina, Luis</div>
+            <div class="pat-meta">Pendiente · prefiere mañana · 19 días · score IA: 55%</div>
+            <div class="ai-score" style="margin-top:6px;"><div class="score-bar"><div class="score-fill" style="width:55%"></div></div><div class="score-val">55%</div></div>
+          </div>
+          <div class="pat-actions">
+            <button class="btn" onclick="showSection('whatsapp');simularWA('Luis Torres','martes 7 de mayo','10:00 AM')">Notificar</button>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- SECTION: AGREGAR -->
-      <div id="section-agregar" class="hidden">
-        <div class="topbar"><h1>Agregar paciente</h1></div>
-        <div class="form-block" style="display:block" id="form-block">
-          <div class="form-grid">
-            <div class="form-group"><label>Apellido(s) *</label><input type="text" placeholder="Ej. García López"></div>
-            <div class="form-group"><label>Nombre(s) *</label><input type="text" placeholder="Ej. María Elena"></div>
-            <div class="form-group"><label>Teléfono / WhatsApp *</label><input type="text" placeholder="614-XXX-XXXX"></div>
-            <div class="form-group"><label>Email</label><input type="email" placeholder="correo@ejemplo.com"></div>
-            <div class="form-group"><label>Fecha de ingreso *</label><input type="date"></div>
-            <div class="form-group"><label>Turno preferido *</label>
-              <select><option>Mañana (L-V)</option><option>Tarde (L-V)</option><option>Sábado</option><option>Cualquier horario</option></select>
-            </div>
-            <div class="form-group"><label>Prioridad inicial *</label>
-              <select><option>Pendiente</option><option>Urgente</option></select>
-            </div>
-            <div class="form-group"><label>Médico referente</label><input type="text" placeholder="Nombre del médico (opcional)"></div>
-            <div class="form-group full"><label>Motivo de consulta *</label><textarea rows="3" placeholder="Descripción del motivo..."></textarea></div>
-            <div class="form-group full"><label>Notas internas (asistente)</label><textarea rows="2" placeholder="Observaciones que NO son visibles al paciente..."></textarea></div>
-            <div class="form-group"><label>Asistente que registra</label>
-              <select><option>Asistente turno mañana</option><option>Asistente turno tarde</option><option>Asistente sábados</option></select>
-            </div>
-            <div class="form-group"><label>Canal de contacto preferido</label>
-              <select><option>WhatsApp</option><option>Llamada telefónica</option><option>Email</option></select>
-            </div>
-          </div>
-          <button class="btn-save">💾 Guardar en Airtable y analizar prioridad</button>
+    <div class="section-header"><span class="section-title">Registrar nueva cancelación</span></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;">
+      <div class="form-grid">
+        <div class="form-field"><label class="form-label">Paciente que cancela</label><input type="text" placeholder="Buscar paciente..."></div>
+        <div class="form-field"><label class="form-label">Fecha y hora liberada</label><input type="datetime-local"></div>
+        <div class="form-field"><label class="form-label">Turno</label>
+          <select><option>Mañana (L-V · 8-14h)</option><option>Tarde (L-V · 15-20h)</option><option>Sábado (9-14h)</option></select>
+        </div>
+        <div class="form-field"><label class="form-label">Motivo cancelación</label><input type="text" placeholder="Viaje, emergencia, otro..."></div>
+      </div>
+      <button class="btn btn-blue" style="width:100%;padding:10px;font-size:13px;" onclick="alert('En la versión conectada a Airtable, la IA analizaría todos los pacientes y propondría los mejores candidatos automáticamente.')">Analizar con IA y proponer candidatos</button>
+    </div>
+  </div>
+
+  <!-- ========== AGREGAR ========== -->
+  <div id="section-agregar" class="panel">
+    <div class="page-header"><div><div class="page-title">Agregar paciente</div><div class="page-sub">Nuevo ingreso a lista de espera</div></div></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;">
+      <div class="form-grid">
+        <div class="form-field"><label class="form-label">Apellido(s) *</label><input type="text" placeholder="Martínez Rivas"></div>
+        <div class="form-field"><label class="form-label">Nombre(s) *</label><input type="text" placeholder="Sofía"></div>
+        <div class="form-field"><label class="form-label">Teléfono / WhatsApp *</label><input type="tel" placeholder="614-XXX-XXXX"></div>
+        <div class="form-field"><label class="form-label">Email</label><input type="email" placeholder="correo@ejemplo.com"></div>
+        <div class="form-field"><label class="form-label">Fecha de ingreso *</label><input type="date"></div>
+        <div class="form-field"><label class="form-label">Turno preferido *</label>
+          <select><option>Mañana (L-V)</option><option>Tarde (L-V)</option><option>Sábado</option><option>Cualquier horario</option></select>
+        </div>
+        <div class="form-field"><label class="form-label">Prioridad inicial *</label>
+          <select><option>Pendiente</option><option>Urgente</option></select>
+        </div>
+        <div class="form-field"><label class="form-label">Médico referente</label><input type="text" placeholder="Dr. / Nombre referente (opcional)"></div>
+      </div>
+      <div class="form-field" style="margin-bottom:12px;"><label class="form-label">Motivo de consulta *</label>
+        <textarea placeholder="Describe brevemente el motivo de consulta (ansiedad, depresión, evaluación general, etc.)"></textarea>
+      </div>
+      <div class="form-field" style="margin-bottom:12px;"><label class="form-label">Notas internas (asistente)</label>
+        <textarea placeholder="Observaciones adicionales: quién llamó, urgencia reportada por familiar, etc."></textarea>
+      </div>
+      <div class="form-grid">
+        <div class="form-field"><label class="form-label">Asistente que registra</label>
+          <select><option>Asistente turno mañana</option><option>Asistente turno tarde</option><option>Asistente sábados</option></select>
+        </div>
+        <div class="form-field"><label class="form-label">Canal de contacto preferido</label>
+          <select><option>WhatsApp</option><option>Llamada telefónica</option><option>Email</option></select>
         </div>
       </div>
+      <button class="btn btn-blue" style="width:100%;padding:10px;font-size:13px;margin-top:4px;">Guardar en Airtable y analizar prioridad</button>
+    </div>
+  </div>
 
-      <!-- SECTION: WHATSAPP -->
-      <div id="section-whatsapp" class="hidden">
-        <div class="topbar"><h1>Simulador WhatsApp</h1></div>
-        <div style="background:white;border-radius:16px;padding:24px;border:1px solid #f1f5f9;box-shadow:var(--card-shadow)">
-          <div class="wa-preview">
+  <!-- ========== WHATSAPP SIMULATOR ========== -->
+  <div id="section-whatsapp" class="panel">
+    <div class="page-header"><div><div class="page-title">Simulador WhatsApp</div><div class="page-sub">Vista previa de mensajes automáticos (simulación · Twilio pendiente)</div></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div>
+        <div class="section-header" style="margin-bottom:0.75rem;"><span class="section-title">Configurar mensaje</span></div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;">
+          <div class="form-field" style="margin-bottom:10px;"><label class="form-label">Tipo de mensaje</label>
+            <select id="wa-tipo" onchange="actualizarWA()">
+              <option value="cancelacion">Cancelación — slot disponible</option>
+              <option value="recordatorio">Recordatorio de cita</option>
+              <option value="confirmacion">Confirmación de agendado</option>
+              <option value="seguimiento">Seguimiento en lista</option>
+            </select>
+          </div>
+          <div class="form-field" style="margin-bottom:10px;"><label class="form-label">Nombre del paciente</label>
+            <input id="wa-nombre" type="text" value="Sofía Martínez" oninput="actualizarWA()">
+          </div>
+          <div class="form-field" style="margin-bottom:10px;"><label class="form-label">Fecha de la cita</label>
+            <input id="wa-fecha" type="text" value="martes 7 de mayo" oninput="actualizarWA()">
+          </div>
+          <div class="form-field" style="margin-bottom:14px;"><label class="form-label">Hora</label>
+            <input id="wa-hora" type="text" value="10:00 AM" oninput="actualizarWA()">
+          </div>
+          <button class="btn btn-green" style="width:100%;padding:9px;" onclick="enviarSimulado()">Simular envío WhatsApp</button>
+          <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:8px;">⚡ En producción: enviado vía Twilio API automáticamente</div>
+        </div>
+      </div>
+      <div>
+        <div class="section-header" style="margin-bottom:0.75rem;"><span class="section-title">Vista previa</span></div>
+        <div class="wa-container">
+          <div class="wa-header">
+            <div class="wa-av">CF</div>
+            <div><div class="wa-name">Consultorio Dr. Flores</div><div class="wa-status">en línea</div></div>
+          </div>
+          <div class="wa-messages" id="wa-messages">
             <div class="wa-bubble">
-              Hola Sofía Martínez 👋, le contacta la asistente del <strong>Dr. Carlos Flores Contreras</strong>.<br><br>
-              Se liberó una cita disponible para el <strong>martes 7 de mayo a las 10:00 AM</strong> por cancelación de otro paciente.<br><br>
-              ¿Le interesa tomar este espacio? Por favor confirme antes de las <strong>2:00 PM de hoy</strong> para reservarla. 🗓️<br><br>
-              📍 Consultorio: [dirección]<br>
-              📞 Tel: 614-XXX-XXXX
+              <div class="wa-text" id="wa-preview-text">Hola Sofía Martínez 👋, le contacta la asistente del <strong>Dr. Carlos Flores Contreras</strong>.<br><br>Se liberó una cita disponible para el <strong>martes 7 de mayo a las 10:00 AM</strong> por cancelación de otro paciente.<br><br>¿Le interesa tomar este espacio? Por favor confirme antes de las <strong>2:00 PM de hoy</strong> para reservarla. 🗓️<br><br>📍 Consultorio: [dirección]<br>📞 Tel: 614-XXX-XXXX</div>
               <div class="wa-time">10:23 AM ✓✓</div>
             </div>
           </div>
-          <p style="font-size:12px;color:var(--muted);margin-top:12px">⚡ En producción: enviado vía Twilio API automáticamente</p>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.875rem;margin-top:0.75rem;">
+          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Estado de envío simulado</div>
+          <div id="wa-status-area" style="font-size:12px;color:var(--text2);">Presiona "Simular envío" para ver el estado</div>
         </div>
       </div>
-
-      <!-- SECTION: REPORTES -->
-      <div id="section-reportes" class="hidden">
-        <div class="topbar"><h1>Reportes & Estadísticas</h1></div>
-        <div class="stats-row">
-          <div class="stat-card"><div class="stat-num">23</div><div class="stat-label">Atendidos este mes</div></div>
-          <div class="stat-card urgent"><div class="stat-num">4</div><div class="stat-label">Cancelaciones</div></div>
-          <div class="stat-card"><div class="stat-num">75%</div><div class="stat-label">Eficiencia recuperación</div></div>
-          <div class="stat-card"><div class="stat-num">18d</div><div class="stat-label">Tiempo prom. espera</div></div>
-        </div>
-        <div style="background:white;border-radius:16px;padding:24px;border:1px solid #f1f5f9">
-          <div class="section-title" style="margin-bottom:16px">Distribución mensual</div>
-          <div class="chart-bar-container">
-            <div class="bar-row"><div class="bar-label">Atendidos</div><div class="bar-track"><div class="bar-fill" style="width:77%"></div></div><div class="bar-value">23</div></div>
-            <div class="bar-row"><div class="bar-label">Nuevos</div><div class="bar-track"><div class="bar-fill" style="width:27%"></div></div><div class="bar-value">8</div></div>
-            <div class="bar-row"><div class="bar-label">Cancelaciones</div><div class="bar-track"><div class="bar-fill urgent" style="width:13%"></div></div><div class="bar-value">4</div></div>
-            <div class="bar-row"><div class="bar-label">Slots recuperados</div><div class="bar-track"><div class="bar-fill" style="width:10%;background:#7c3aed"></div></div><div class="bar-value">3</div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- SECTION: AIRTABLE -->
-      <div id="section-airtable" class="hidden">
-        <div class="topbar"><h1>Estructura Airtable</h1></div>
-        <div style="background:white;border-radius:16px;padding:24px;border:1px solid #f1f5f9">
-          <p style="font-size:13.5px;color:var(--slate);margin-bottom:16px">3 tablas interconectadas · Listo para crear en tu cuenta de Airtable</p>
-          <table class="airtable-table">
-            <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
-            <tbody>
-              <tr><td>Nombre completo</td><td>Single line text</td><td>Apellido(s), Nombre(s)</td></tr>
-              <tr><td>Teléfono WhatsApp</td><td>Phone number</td><td>Para envío Twilio</td></tr>
-              <tr><td>Días en lista</td><td>Formula</td><td>Auto: DATETIME_DIFF(TODAY(), ...)</td></tr>
-              <tr><td>Status</td><td>Single select</td><td>Urgente · Pendiente · Agendado · Alta</td></tr>
-              <tr><td>Nivel urgencia IA</td><td>Number</td><td>Score 0-100 calculado por IA</td></tr>
-              <tr><td>Historial intentos</td><td>Long text</td><td>Registro de contactos previos</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- SECTION: PROMPT -->
-      <div id="section-prompt" class="hidden">
-        <div class="topbar"><h1>Prompt del Sistema IA</h1></div>
-        <div style="background:white;border-radius:16px;padding:24px;border:1px solid #f1f5f9">
-          <p style="font-size:13.5px;color:var(--slate);margin-bottom:16px">System prompt optimizado para análisis de lista de espera psiquiátrica</p>
-          <div class="prompt-block">
-Eres el asistente IA del consultorio del Dr. Carlos Flores Contreras.<br>
-Tu función es priorizar pacientes con criterios clínicos y administrativos.<br><br>
-CRITERIOS DE PRIORIZACIÓN:<br>
-- Urgencia clínica: peso 40%<br>
-- Días en lista: peso 30%<br>
-- Compatibilidad horaria: peso 20%<br>
-- Intentos previos: peso 10%<br><br>
-PALABRAS CLAVE DE URGENCIA AUTOMÁTICA:<br>
-crisis, ideación, riesgo, autolesión, suicida, psicosis, brote...<br><br>
-REGLAS ÉTICAS:<br>
-- NUNCA compartir info de un paciente con otro<br>
-- NUNCA hacer diagnósticos<br>
-- Mensajes WA sin mencionar diagnósticos<br>
-          </div>
-        </div>
-      </div>
-
-    </main>
+    </div>
   </div>
-</div>
 
-<!-- OVERLAY -->
-<div id="overlay">
-  <div class="tour-card" id="tour-card">
-    <!-- content injected by JS -->
+  <!-- ========== ESTADÍSTICAS ========== -->
+  <div id="section-stats" class="panel">
+    <div class="page-header"><div><div class="page-title">Estadísticas</div><div class="page-sub">Abril 2026 · Dr. Carlos Flores Contreras</div></div></div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Atendidos este mes</div><div class="stat-val" style="color:var(--green)">23</div>
+        <div class="bar-group">
+          <div class="bar-row"><div class="bar-label">Mañana</div><div class="bar"><div class="bar-fill" style="width:65%;background:var(--green)"></div></div><div class="bar-val">15</div></div>
+          <div class="bar-row"><div class="bar-label">Tarde</div><div class="bar"><div class="bar-fill" style="width:30%;background:var(--blue)"></div></div><div class="bar-val">7</div></div>
+          <div class="bar-row"><div class="bar-label">Sábado</div><div class="bar"><div class="bar-fill" style="width:4%;background:var(--amber)"></div></div><div class="bar-val">1</div></div>
+        </div>
+      </div>
+      <div class="stat-card"><div class="stat-label">Cancelaciones</div><div class="stat-val" style="color:var(--red)">4</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:8px;">3 de 4 slots fueron reutilizados</div>
+        <div style="font-size:12px;color:var(--green);font-weight:600;">75% eficiencia de recuperación</div>
+      </div>
+      <div class="stat-card"><div class="stat-label">Estado actual lista</div><div class="stat-val">12</div>
+        <div class="bar-group">
+          <div class="bar-row"><div class="bar-label">Urgente</div><div class="bar"><div class="bar-fill" style="width:25%;background:#E24B4A"></div></div><div class="bar-val">3</div></div>
+          <div class="bar-row"><div class="bar-label">Pendiente</div><div class="bar"><div class="bar-fill" style="width:58%;background:#888780"></div></div><div class="bar-val">7</div></div>
+          <div class="bar-row"><div class="bar-label">Agendado</div><div class="bar"><div class="bar-fill" style="width:17%;background:var(--green)"></div></div><div class="bar-val">2</div></div>
+        </div>
+      </div>
+      <div class="stat-card"><div class="stat-label">Tiempo prom. de espera</div><div class="stat-val">18 días</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:8px;">Meta: menos de 14 días</div>
+        <div class="bar" style="margin-top:6px;"><div class="bar-fill" style="width:65%;background:var(--amber)"></div></div>
+      </div>
+    </div>
+    <div class="stat-card" style="margin-bottom:1rem;">
+      <div class="stat-label">Distribución mensual · altas vs ingresos</div>
+      <div style="display:flex;gap:2rem;margin-top:10px;">
+        <div style="text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--green)">23</div><div style="font-size:11px;color:var(--text2)">Atendidos</div></div>
+        <div style="text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--blue)">8</div><div style="font-size:11px;color:var(--text2)">Nuevos</div></div>
+        <div style="text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--red)">4</div><div style="font-size:11px;color:var(--text2)">Cancelaciones</div></div>
+        <div style="text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--green)">3</div><div style="font-size:11px;color:var(--text2)">Slots recuperados</div></div>
+        <div style="text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--amber)">1</div><div style="font-size:11px;color:var(--text2)">Slots perdidos</div></div>
+      </div>
+    </div>
   </div>
-</div>
 
-<!-- HIGHLIGHT RING -->
-<div class="highlight-ring hidden" id="highlight-ring"></div>
+  <!-- ========== ESTRUCTURA AIRTABLE ========== -->
+  <div id="section-bd" class="panel">
+    <div class="page-header">
+      <div><div class="page-title">Estructura Airtable</div><div class="page-sub">Diseño completo de base · 3 tablas · listo para crear en tu cuenta</div></div>
+      <button class="copy-btn" onclick="alert('Copia la estructura y pégala al crear las tablas en Airtable.')">Copiar estructura</button>
+    </div>
 
-<script>
-const TOURS = {
-  doctor: [
+    <div class="bd-section">
+      <div class="bd-table-name">📋 Tabla 1: PACIENTES_LISTA_ESPERA <span class="bd-table-tag">Tabla principal</span></div>
+      <table>
+        <tr><th>Campo</th><th>Tipo Airtable</th><th>Valores / Descripción</th><th>Requerido</th></tr>
+        <tr><td>Nombre completo</td><td><span class="field-type">Single line text</span></td><td>Formato: Apellido(s), Nombre(s)</td><td>✅</td></tr>
+        <tr><td>Teléfono WhatsApp</td><td><span class="field-type">Phone number</span></td><td>614-XXX-XXXX · campo para Twilio</td><td>✅</td></tr>
+        <tr><td>Email</td><td><span class="field-type">Email</span></td><td>Correo del paciente o familiar</td><td>—</td></tr>
+        <tr><td>Fecha ingreso lista</td><td><span class="field-type">Date</span></td><td>Fecha que se anotó en lista</td><td>✅</td></tr>
+        <tr><td>Días en lista</td><td><span class="field-type">Formula</span></td><td>DATETIME_DIFF(TODAY(), {Fecha ingreso lista}, 'days')</td><td>Auto</td></tr>
+        <tr><td>Status</td><td><span class="field-type">Single select</span></td><td>Urgente · Pendiente · Agendado · Alta</td><td>✅</td></tr>
+        <tr><td>Turno preferido</td><td><span class="field-type">Single select</span></td><td>Mañana L-V · Tarde L-V · Sábados · Cualquier horario</td><td>✅</td></tr>
+        <tr><td>Motivo consulta</td><td><span class="field-type">Long text</span></td><td>Descripción libre del motivo de consulta</td><td>✅</td></tr>
+        <tr><td>Nivel urgencia IA</td><td><span class="field-type">Number</span></td><td>Score 0-100 calculado por la IA al registrar</td><td>Auto</td></tr>
+        <tr><td>Notas asistente</td><td><span class="field-type">Long text</span></td><td>Observaciones internas, no visible al paciente</td><td>—</td></tr>
+        <tr><td>Asistente que registró</td><td><span class="field-type">Single select</span></td><td>Turno Mañana · Turno Tarde · Turno Sábado</td><td>✅</td></tr>
+        <tr><td>Médico referente</td><td><span class="field-type">Single line text</span></td><td>Nombre del médico que refirió (opcional)</td><td>—</td></tr>
+        <tr><td>Canal contacto</td><td><span class="field-type">Single select</span></td><td>WhatsApp · Llamada · Email</td><td>✅</td></tr>
+        <tr><td>Fecha última gestión</td><td><span class="field-type">Date</span></td><td>Última vez que se contactó o actualizó</td><td>—</td></tr>
+        <tr><td>Historial de intentos</td><td><span class="field-type">Long text</span></td><td>Registro: "01/05 · llamada · no contestó"</td><td>—</td></tr>
+        <tr><td>Link a cita</td><td><span class="field-type">Link to AGENDA</span></td><td>Vincula al registro en tabla AGENDA</td><td>—</td></tr>
+      </table>
+    </div>
+
+    <div class="bd-section">
+      <div class="bd-table-name">📅 Tabla 2: AGENDA_CITAS <span class="bd-table-tag">Slots y cancelaciones</span></div>
+      <table>
+        <tr><th>Campo</th><th>Tipo Airtable</th><th>Valores / Descripción</th><th>Requerido</th></tr>
+        <tr><td>ID Cita</td><td><span class="field-type">Autonumber</span></td><td>Identificador único automático</td><td>Auto</td></tr>
+        <tr><td>Fecha y hora</td><td><span class="field-type">Date (incl. time)</span></td><td>Fecha y hora exacta de la cita</td><td>✅</td></tr>
+        <tr><td>Turno</td><td><span class="field-type">Single select</span></td><td>Mañana · Tarde · Sábado</td><td>✅</td></tr>
+        <tr><td>Status cita</td><td><span class="field-type">Single select</span></td><td>Ocupada · Disponible · Cancelada · Completada</td><td>✅</td></tr>
+        <tr><td>Paciente</td><td><span class="field-type">Link to PACIENTES</span></td><td>Paciente asignado a esta cita</td><td>—</td></tr>
+        <tr><td>Motivo cancelación</td><td><span class="field-type">Single line text</span></td><td>Razón si status = Cancelada</td><td>—</td></tr>
+        <tr><td>Candidato IA 1</td><td><span class="field-type">Link to PACIENTES</span></td><td>Primer sugerido por la IA</td><td>Auto</td></tr>
+        <tr><td>Candidato IA 2</td><td><span class="field-type">Link to PACIENTES</span></td><td>Segundo sugerido por la IA</td><td>Auto</td></tr>
+        <tr><td>Candidato IA 3</td><td><span class="field-type">Link to PACIENTES</span></td><td>Tercer sugerido por la IA</td><td>Auto</td></tr>
+        <tr><td>WA enviado</td><td><span class="field-type">Checkbox</span></td><td>¿Se envió WhatsApp de notificación?</td><td>—</td></tr>
+        <tr><td>Fecha WA enviado</td><td><span class="field-type">Date</span></td><td>Fecha y hora del envío</td><td>—</td></tr>
+        <tr><td>Asistente responsable</td><td><span class="field-type">Single select</span></td><td>Quién gestionó esta cita</td><td>✅</td></tr>
+        <tr><td>Notas cita</td><td><span class="field-type">Long text</span></td><td>Observaciones post-consulta</td><td>—</td></tr>
+      </table>
+    </div>
+
+    <div class="bd-section">
+      <div class="bd-table-name">📊 Tabla 3: LOG_WHATSAPP <span class="bd-table-tag">Historial de mensajes</span></div>
+      <table>
+        <tr><th>Campo</th><th>Tipo Airtable</th><th>Valores / Descripción</th><th>Requerido</th></tr>
+        <tr><td>Paciente</td><td><span class="field-type">Link to PACIENTES</span></td><td>A quién se envió</td><td>✅</td></tr>
+        <tr><td>Tipo mensaje</td><td><span class="field-type">Single select</span></td><td>Slot disponible · Recordatorio · Confirmación · Seguimiento</td><td>✅</td></tr>
+        <tr><td>Mensaje enviado</td><td><span class="field-type">Long text</span></td><td>Texto completo del mensaje</td><td>✅</td></tr>
+        <tr><td>Fecha envío</td><td><span class="field-type">Date (incl. time)</span></td><td>Timestamp del envío</td><td>Auto</td></tr>
+        <tr><td>Status Twilio</td><td><span class="field-type">Single select</span></td><td>Enviado · Entregado · Leído · Falló · Simulado</td><td>Auto</td></tr>
+        <tr><td>Respuesta paciente</td><td><span class="field-type">Single select</span></td><td>Confirmó · No confirmó · No contestó · Pidió cambio</td><td>—</td></tr>
+        <tr><td>Asistente</td><td><span class="field-type">Single select</span></td><td>Quién ejecutó el envío</td><td>✅</td></tr>
+        <tr><td>Cita relacionada</td><td><span class="field-type">Link to AGENDA</span></td><td>Slot al que se refiere el mensaje</td><td>—</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ========== PROMPT IA ========== -->
+  <div id="section-prompt" class="panel">
+    <div class="page-header">
+      <div><div class="page-title">Prompt del sistema IA</div><div class="page-sub">Pega este prompt en tu llamada a Claude API para análisis de lista de espera</div></div>
+      <button class="copy-btn" onclick="copiarPrompt()">📋 Copiar prompt</button>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;">Cómo usar este prompt</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.6;">
+        1. En tu app, obtén los registros de Airtable vía su API.<br>
+        2. Serializa la lista en JSON y agrega al final del prompt.<br>
+        3. Llama a la Claude API con este system prompt.<br>
+        4. La respuesta incluirá candidatos rankeados + mensajes de WhatsApp listos.<br>
+        5. Guarda la respuesta en la tabla LOG_WHATSAPP de Airtable.
+      </div>
+    </div>
+    <div class="prompt-box" id="prompt-content">
+<span class="prompt-comment"># =====================================================
+# SYSTEM PROMPT · ASISTENTE IA · CONSULTORIO DR. FLORES
+# Dr. Carlos Flores Contreras · Psiquiatría · Chihuahua
+# =====================================================</span>
+
+<span class="prompt-key">Eres el asistente de inteligencia artificial del consultorio del Dr. Carlos Flores Contreras, psiquiatra. 
+Tu función es ayudar a las asistentes administrativas (turno mañana, tarde y sábados) a gestionar 
+la lista de espera de pacientes de manera eficiente, ética y compasiva.</span>
+
+<span class="prompt-comment">## CONTEXTO DEL CONSULTORIO</span>
+- Especialidad: Psiquiatría
+- Turnos: Mañana (L-V 8-14h), Tarde (L-V 15-20h), Sábados (9-14h)
+- 3 asistentes en diferentes turnos comparten esta herramienta
+- El Dr. Flores tiene agenda manual y no accede directamente al sistema
+- Confidencialidad HIPAA/NOM-004 aplica en todo momento
+
+<span class="prompt-comment">## TUS TAREAS PRINCIPALES</span>
+
+<span class="prompt-key">TAREA 1: ANÁLISIS DE PRIORIDAD</span>
+Cuando se te proporcione la lista de pacientes en espera en formato JSON, 
+calcula un score de prioridad (0-100) para cada uno considerando:
+
+  - urgencia_clinica: peso 40% 
+    (Urgente=40, Pendiente=20, Alta=0)
+  - dias_en_lista: peso 30%
+    (Más días = mayor puntaje, máximo 30 puntos a partir de 45+ días)
+  - compatibilidad_horario: peso 20%
+    (Si el turno disponible coincide con preferencia del paciente: 20pts, parcial: 10pts)
+  - intentos_previos: peso 10%
+    (Menos intentos fallidos = mayor prioridad)
+
+Devuelve los 3 mejores candidatos ordenados por score, con justificación clara.
+
+<span class="prompt-key">TAREA 2: GENERACIÓN DE MENSAJE WHATSAPP</span>
+Cuando se te pida generar un mensaje de WhatsApp, usa SIEMPRE esta estructura:
+
+  Saludo personalizado + nombre del paciente
+  Identificación del consultorio
+  Motivo del mensaje (slot disponible / recordatorio / confirmación)
+  Fecha y hora específica
+  Instrucción clara de acción (confirmar antes de X hora)
+  Información de contacto del consultorio
+  Tono: cálido, profesional, sin tecnicismos médicos
+  Longitud: máximo 200 palabras
+  Idioma: español mexicano
+
+<span class="prompt-key">TAREA 3: ANÁLISIS DE CANCELACIÓN</span>
+Cuando una cita se cancela y se libera un slot, recibirás:
+  - turno_disponible: mañana | tarde | sábado
+  - fecha_hora: timestamp del slot liberado
+  - lista_espera: array JSON con todos los pacientes activos
+
+Analiza y responde SIEMPRE en JSON con este formato:
+{
+  "slot": {"fecha": "...", "hora": "...", "turno": "..."},
+  "candidatos": [
     {
-      title: "Bienvenido, Dr. Flores 👋",
-      persona: "doctor",
-      badge: "Para el Médico",
-      content: `<p>Este tour le muestra cómo <strong>Lista de Espera IA Médica</strong> trabaja para usted en segundo plano, permitiéndole enfocarse en lo que importa: sus pacientes.</p><p>Su equipo gestiona todo desde esta plataforma. Usted recibe reportes, tiene visibilidad total y puede confiar en que <strong>la IA prioriza correctamente</strong> cada caso.</p>`,
-      highlight: null
-    },
-    {
-      title: "Panel de control del consultorio",
-      persona: "doctor",
-      badge: "Vista General",
-      content: `<p>En un solo vistazo usted puede ver el estado actual de su lista de espera:</p><ul>
-        <li><strong>12 pacientes activos</strong> en gestión</li>
-        <li><strong>3 casos urgentes</strong> identificados por la IA</li>
-        <li><strong>5 citas agendadas</strong> próximamente</li>
-        <li><strong>18 días</strong> promedio de espera (meta: -14 días)</li>
-      </ul><p>Sus asistentes actualizan esto en tiempo real.</p>`,
-      highlight: "stats-row",
-      section: "lista"
-    },
-    {
-      title: "Inteligencia Artificial priorizando sus casos",
-      persona: "doctor",
-      badge: "Motor de IA",
-      content: `<p>La IA analiza <strong>urgencia clínica, días en lista y compatibilidad de horario</strong> para recomendar a quién contactar primero.</p><ul>
-        <li>Peso clínico: <strong>40%</strong></li>
-        <li>Días en lista: <strong>30%</strong></li>
-        <li>Compatibilidad horaria: <strong>20%</strong></li>
-        <li>Intentos previos: <strong>10%</strong></li>
-      </ul><p>Detecta palabras de crisis automáticamente y eleva urgencia.</p>`,
-      highlight: "ai-block",
-      section: "lista"
-    },
-    {
-      title: "Cancelaciones: cero slots perdidos",
-      persona: "doctor",
-      badge: "Módulo Cancelación",
-      content: `<p>Cuando un paciente cancela, la IA <strong>propone inmediatamente</strong> quién puede ocupar ese slot, considerando urgencia y horario.</p><p>Sus asistentes notifican vía WhatsApp con un clic. <strong>75% de eficiencia de recuperación</strong> de slots en su consultorio.</p>`,
-      highlight: "cancel-block",
-      section: "cancelacion"
-    },
-    {
-      title: "Reportes ejecutivos para usted",
-      persona: "doctor",
-      badge: "Reportes",
-      content: `<p>Cada mes usted puede revisar métricas clave de su consultorio:</p><ul>
-        <li>Pacientes atendidos vs nuevos ingresos</li>
-        <li>Tasa de recuperación de cancelaciones</li>
-        <li>Tiempo promedio de espera</li>
-        <li>Distribución por turnos</li>
-      </ul><p>Todo exportable para sus registros médicos.</p>`,
-      highlight: null,
-      section: "reportes"
-    },
-    {
-      title: "¡Tour completado! 🎉",
-      persona: "doctor",
-      badge: "Listo",
-      content: `<p>Usted ya conoce las funciones clave de su plataforma. Su equipo manejará el día a día; usted tiene visibilidad y control total.</p><p style="margin-top:12px"><strong>Próximo paso:</strong> Que sus asistentes realicen el tour para ellas y empiecen a gestionar la lista de espera hoy mismo.</p>`,
-      highlight: null,
-      section: "lista"
+      "rank": 1,
+      "nombre": "...",
+      "score": 95,
+      "justificacion": "...",
+      "mensaje_whatsapp": "..."
     }
   ],
-  asistente: [
-    {
-      title: "Hola Asistente 👋",
-      persona: "asistente",
-      badge: "Para Asistentes",
-      content: `<p>Este tour te enseña a usar <strong>Lista de Espera IA Médica</strong> en tu turno diario. En minutos aprenderás a:</p><ul>
-        <li>Ver y filtrar la lista de pacientes</li>
-        <li>Registrar nuevos ingresos</li>
-        <li>Gestionar cancelaciones con IA</li>
-        <li>Enviar mensajes de WhatsApp automáticos</li>
-      </ul>`,
-      highlight: null
-    },
-    {
-      title: "La barra lateral: tu centro de trabajo",
-      persona: "asistente",
-      badge: "Navegación",
-      content: `<p>Desde el menú lateral accedes a todas las funciones:</p><ul>
-        <li><strong>Lista de espera</strong> — Ver todos los pacientes activos</li>
-        <li><strong>Cancelación + IA</strong> — Gestionar slots liberados</li>
-        <li><strong>Agregar paciente</strong> — Registrar nuevos ingresos</li>
-        <li><strong>Simulador WhatsApp</strong> — Ver mensajes antes de enviar</li>
-      </ul><p>El <span style="background:#fee2e2;color:#ef4444;padding:2px 6px;border-radius:4px;font-size:12px">3</span> rojo indica pacientes urgentes pendientes de gestión.</p>`,
-      highlight: "sidebar",
-      section: "lista"
-    },
-    {
-      title: "Lista de pacientes: filtra y actúa",
-      persona: "asistente",
-      badge: "Lista de Espera",
-      content: `<p>Puedes filtrar por estado con los botones de arriba:</p><ul>
-        <li><strong>Urgentes</strong> → Atender primero siempre</li>
-        <li><strong>Pendientes</strong> → En espera de slot disponible</li>
-        <li><strong>Agendados</strong> → Confirmar y recordar</li>
-        <li><strong>Alta</strong> → Historial completado</li>
-      </ul><p>Cada tarjeta muestra días en lista, preferencia de turno y notas del motivo.</p>`,
-      highlight: "patient-list",
-      section: "lista"
-    },
-    {
-      title: "Registrar un nuevo paciente",
-      persona: "asistente",
-      badge: "Alta Paciente",
-      content: `<p>Al ingresar un paciente, llena los campos obligatorios:</p><ul>
-        <li><strong>Nombre completo</strong> (Apellido, Nombre)</li>
-        <li><strong>Teléfono WhatsApp</strong></li>
-        <li><strong>Motivo de consulta</strong> — La IA lo analiza automáticamente</li>
-        <li><strong>Turno preferido</strong></li>
-        <li><strong>Prioridad inicial</strong> (Urgente/Pendiente)</li>
-      </ul><p>Si el motivo contiene palabras de crisis, la IA lo marca urgente automáticamente.</p>`,
-      highlight: "form-block",
-      section: "agregar"
-    },
-    {
-      title: "Gestionar una cancelación",
-      persona: "asistente",
-      badge: "Cancelación + IA",
-      content: `<p>Cuando un paciente cancele su cita:</p><ul>
-        <li>1. Ve a <strong>Cancelación + IA</strong> en el menú</li>
-        <li>2. Selecciona el paciente que canceló</li>
-        <li>3. Indica el turno y motivo</li>
-        <li>4. La IA propone <strong>3 candidatos</strong> del mejor al peor match</li>
-        <li>5. Haz clic en <strong>Asignar y notificar</strong> para enviar WhatsApp automático</li>
-      </ul>`,
-      highlight: "cancel-block",
-      section: "cancelacion"
-    },
-    {
-      title: "WhatsApp automático",
-      persona: "asistente",
-      badge: "Mensajes WA",
-      content: `<p>El sistema genera mensajes profesionales y cálidos para cada situación:</p><ul>
-        <li>📣 Slot disponible por cancelación</li>
-        <li>🔔 Recordatorio de cita</li>
-        <li>✅ Confirmación de agendado</li>
-        <li>📋 Seguimiento en lista</li>
-      </ul><p>Puedes previsualizar el mensaje antes de enviarlo. <strong>Nunca menciona diagnósticos</strong> por privacidad del paciente.</p>`,
-      highlight: null,
-      section: "whatsapp"
-    },
-    {
-      title: "¡Ya puedes trabajar! 🌟",
-      persona: "asistente",
-      badge: "¡Lista!",
-      content: `<p>Recuerda las reglas de oro:</p><ul>
-        <li>✅ Siempre atender <strong>urgentes primero</strong></li>
-        <li>✅ Registrar cada intento de contacto</li>
-        <li>✅ Respetar la <strong>confidencialidad</strong> del paciente</li>
-        <li>✅ Ante crisis — escala inmediatamente al Dr. Flores</li>
-        <li>✅ Cambiar el estado del paciente al confirmar cita</li>
-      </ul><p style="margin-top:10px">¡Tu trabajo es clave para que los pacientes reciban atención oportuna! 💙</p>`,
-      highlight: null,
-      section: "lista"
-    }
-  ]
+  "recomendacion_asistente": "..."
+}
+
+<span class="prompt-comment">## REGLAS ÉTICAS Y DE CONFIDENCIALIDAD</span>
+- NUNCA compartas información de un paciente con otro
+- NUNCA hagas diagnósticos ni sugieras cambios en tratamiento
+- Si detectas señales de crisis en el motivo de consulta, marca como URGENTE inmediatamente
+- Los mensajes de WhatsApp NO deben mencionar diagnósticos ni motivos clínicos
+- En caso de duda sobre urgencia, siempre escala al criterio del Dr. Flores
+
+<span class="prompt-comment">## PALABRAS CLAVE QUE ELEVAN AUTOMÁTICAMENTE A URGENTE</span>
+Si el motivo de consulta contiene alguna de estas palabras, asigna urgencia máxima:
+crisis, ideación, riesgo, autolesión, suicida, psicosis, brote, 
+emergencia, urgente, deja de funcionar, no puede trabajar
+
+<span class="prompt-comment">## FORMATO DE RESPUESTA</span>
+- Responde siempre en español
+- Para análisis de lista: JSON estructurado + explicación breve en texto
+- Para mensajes WA: solo el texto del mensaje, listo para copiar/enviar
+- Para reportes: tablas y resumen ejecutivo en español
+
+<span class="prompt-comment">## DATOS DEL CONSULTORIO (para mensajes)</span>
+- Médico: Dr. Carlos Flores Contreras
+- Especialidad: Psiquiatría  
+- Teléfono: [COMPLETAR]
+- Dirección: [COMPLETAR]
+- WhatsApp consultorio: [COMPLETAR]
+- Horario: L-V 8-20h · Sábados 9-14h
+
+<span class="prompt-comment">## LISTA DE PACIENTES (inyectar aquí desde Airtable API)</span>
+{{LISTA_PACIENTES_JSON}}
+
+<span class="prompt-comment">## SLOT DISPONIBLE (inyectar aquí cuando aplique)</span>
+{{SLOT_CANCELACION_JSON}}
+</div>
+    <div style="background:var(--amber-bg);border:1px solid #EF9F27;border-radius:var(--radius);padding:1rem;margin-top:0.75rem;">
+      <div style="font-size:12px;color:var(--amber);font-weight:600;margin-bottom:4px;">💡 Para conectar con tu app de Netlify + Claude API</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.6;">
+        Reemplaza <code style="background:#fff;padding:1px 4px;border-radius:3px;">{{LISTA_PACIENTES_JSON}}</code> con el resultado de la llamada a Airtable API al cargar la pantalla. Esto le da contexto real a la IA en cada análisis.
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+function showSection(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('section-' + id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const map = {lista:0,cancelacion:1,agregar:2,whatsapp:3,stats:4,bd:5,prompt:6};
+  const items = document.querySelectorAll('.nav-item');
+  if (map[id] !== undefined && items[map[id]]) items[map[id]].classList.add('active');
+}
+
+function filterPatients(status) {
+  document.querySelectorAll('.patient-card').forEach(card => {
+    card.style.display = (status === 'todos' || card.dataset.status === status) ? 'flex' : 'none';
+  });
+}
+
+function cambiarStatus(sel) {
+  const card = sel.closest('.patient-card');
+  const avEl = card.querySelector('.pat-av');
+  const val = sel.value.toLowerCase();
+  const colors = {
+    urgente: ['var(--red-bg)','var(--red)'],
+    pendiente: ['var(--gray-bg)','var(--gray)'],
+    agendado: ['var(--green-bg)','var(--green)'],
+    alta: ['#E6F1FB','#185FA5']
+  };
+  if (colors[val]) {
+    avEl.style.background = colors[val][0];
+    avEl.style.color = colors[val][1];
+  }
+  card.classList.toggle('is-urgent', val === 'urgente');
+  card.dataset.status = val;
+}
+
+const plantillas = {
+  cancelacion: (n,f,h) => `Hola ${n} 👋, le contacta la asistente del <strong>Dr. Carlos Flores Contreras</strong>.<br><br>Se liberó una cita disponible para el <strong>${f} a las ${h}</strong> por cancelación de otro paciente.<br><br>¿Le interesa tomar este espacio? Por favor confirme antes de las <strong>2:00 PM de hoy</strong> para reservarla. 🗓️<br><br>📍 Consultorio: [dirección]<br>📞 Tel: 614-XXX-XXXX`,
+  recordatorio: (n,f,h) => `Hola ${n} 👋, le recuerda la asistente del <strong>Dr. Carlos Flores Contreras</strong>.<br><br>Tiene cita programada para el <strong>${f} a las ${h}</strong>.<br><br>Le pedimos llegar 10 minutos antes. Si necesita cancelar, por favor avísenos con anticipación. ✅<br><br>📞 Tel: 614-XXX-XXXX`,
+  confirmacion: (n,f,h) => `Hola ${n} 🎉, la asistente del <strong>Dr. Carlos Flores Contreras</strong> confirma su cita.<br><br>Quedó agendada para el <strong>${f} a las ${h}</strong>.<br><br>En caso de cualquier cambio, por favor contáctenos. Gracias por su preferencia. 🙏<br><br>📞 Tel: 614-XXX-XXXX`,
+  seguimiento: (n,f,h) => `Hola ${n} 👋, le habla la asistente del <strong>Dr. Carlos Flores Contreras</strong>.<br><br>Nos comunicamos para informarle que continúa en nuestra lista de espera. En cuanto se abra una fecha disponible, le avisaremos de inmediato.<br><br>¿Sigue interesado en la consulta? 🙏<br><br>📞 Tel: 614-XXX-XXXX`
 };
 
-let currentTour = null;
-let currentStep = 0;
-let tourSteps = [];
-
-function showSection(name) {
-  ['lista','cancelacion','agregar','whatsapp','reportes','airtable','prompt'].forEach(s => {
-    const el = document.getElementById('section-'+s);
-    if(el) el.classList.add('hidden');
-    const nav = document.getElementById('nav-'+s);
-    if(nav) nav.classList.remove('active');
-  });
-  const section = document.getElementById('section-'+name);
-  if(section) section.classList.remove('hidden');
-  const nav = document.getElementById('nav-'+name);
-  if(nav) nav.classList.add('active');
+function actualizarWA() {
+  const tipo = document.getElementById('wa-tipo').value;
+  const nombre = document.getElementById('wa-nombre').value || 'Paciente';
+  const fecha = document.getElementById('wa-fecha').value || 'próximamente';
+  const hora = document.getElementById('wa-hora').value || '';
+  document.getElementById('wa-preview-text').innerHTML = plantillas[tipo](nombre,fecha,hora);
 }
 
-function startTour(type) {
-  currentTour = type;
-  currentStep = 0;
-  tourSteps = TOURS[type];
-  renderStep();
-  document.getElementById('overlay').classList.remove('hidden');
+function simularWA(nombre, fecha, hora) {
+  if (nombre) document.getElementById('wa-nombre').value = nombre;
+  if (fecha) document.getElementById('wa-fecha').value = fecha;
+  if (hora) document.getElementById('wa-hora').value = hora;
+  actualizarWA();
 }
 
-function renderStep() {
-  const step = tourSteps[currentStep];
-  const total = tourSteps.length;
-  
-  // Show section if needed
-  if(step.section) showSection(step.section);
-  
-  // Highlight element
-  const ring = document.getElementById('highlight-ring');
-  if(step.highlight) {
-    const el = document.getElementById(step.highlight);
-    if(el) {
-      const rect = el.getBoundingClientRect();
-      ring.style.left = (rect.left - 8) + 'px';
-      ring.style.top = (rect.top - 8) + 'px';
-      ring.style.width = (rect.width + 16) + 'px';
-      ring.style.height = (rect.height + 16) + 'px';
-      ring.classList.remove('hidden');
-    }
-  } else {
-    ring.classList.add('hidden');
-  }
-
-  // Persona label
-  const personaMap = {
-    doctor: { label: '👨‍⚕️ Para el Médico', cls: 'persona-doctor' },
-    asistente: { label: '👩‍💼 Para Asistentes', cls: 'persona-asistente' },
-    ambos: { label: '👥 Para Todos', cls: 'persona-ambos' }
-  };
-  const p = personaMap[step.persona] || personaMap.ambos;
-
-  // Progress dots
-  const dots = Array.from({length: total}, (_, i) => {
-    const cls = i < currentStep ? 'done' : (i === currentStep ? 'active' : '');
-    return `<div class="prog-dot ${cls}"></div>`;
-  }).join('');
-
-  const isLast = currentStep === total - 1;
-  const isFirst = currentStep === 0;
-
-  const card = document.getElementById('tour-card');
-  card.innerHTML = `
-    <div class="tour-badge">${step.badge}</div>
-    <div class="tour-persona"><span class="persona-tag ${p.cls}">${p.label}</span></div>
-    <h2>${step.title}</h2>
-    ${step.content}
-    <div class="tour-progress">${dots}</div>
-    <div class="tour-nav">
-      <span class="step-counter">Paso ${currentStep + 1} de ${total}</span>
-      <div style="display:flex;gap:8px">
-        ${!isFirst ? `<button class="btn-nav btn-prev" onclick="prevStep()">← Anterior</button>` : ''}
-        ${isLast ? 
-          `<button class="btn-nav btn-finish" onclick="finishTour()">✓ Finalizar tour</button>` :
-          `<button class="btn-nav btn-next" onclick="nextStep()">Siguiente →</button>`
-        }
-      </div>
-    </div>
-  `;
-
-  // Animate card
-  card.style.animation = 'none';
-  requestAnimationFrame(() => { card.style.animation = 'cardIn 0.35s cubic-bezier(.34,1.56,.64,1)'; });
+function enviarSimulado() {
+  const nombre = document.getElementById('wa-nombre').value;
+  const statusArea = document.getElementById('wa-status-area');
+  statusArea.innerHTML = '<span style="color:var(--amber)">⏳ Enviando mensaje simulado...</span>';
+  setTimeout(() => {
+    statusArea.innerHTML = `<span style="color:var(--green)">✅ Mensaje enviado a <strong>${nombre}</strong></span><br><span style="font-size:11px;color:var(--text3)">Simulado · ${new Date().toLocaleTimeString('es-MX')} · En producción se registraría en LOG_WHATSAPP de Airtable con status "Enviado"</span>`;
+    const msgs = document.getElementById('wa-messages');
+    const bubble = document.createElement('div');
+    bubble.className = 'wa-bubble sent';
+    bubble.innerHTML = `<div class="wa-text">✓ Recibido · ${new Date().toLocaleTimeString('es-MX')}</div><div class="wa-time">${new Date().toLocaleTimeString('es-MX')} ✓✓</div>`;
+    msgs.appendChild(bubble);
+  }, 1500);
 }
 
-function nextStep() {
-  if(currentStep < tourSteps.length - 1) { currentStep++; renderStep(); }
-}
-function prevStep() {
-  if(currentStep > 0) { currentStep--; renderStep(); }
-}
-function finishTour() {
-  document.getElementById('overlay').classList.add('hidden');
-  document.getElementById('highlight-ring').classList.add('hidden');
-  showWelcome();
+function copiarPrompt() {
+  const text = document.getElementById('prompt-content').innerText;
+  navigator.clipboard.writeText(text).then(() => alert('Prompt copiado al portapapeles ✅'));
 }
 
-function showWelcome() {
-  const card = document.getElementById('tour-card');
-  document.getElementById('highlight-ring').classList.add('hidden');
-  card.innerHTML = `
-    <div id="welcome-card">
-      <div style="font-size:48px;margin-bottom:12px">🏥</div>
-      <h1>Tour Guiado Interactivo</h1>
-      <p>Selecciona el tour según tu rol para aprender a usar<br><strong>Lista de Espera IA Médica</strong> en minutos.</p>
-      <div class="tour-selector">
-        <div class="selector-btn" onclick="startTour('doctor')">
-          <div class="sel-icon">👨‍⚕️</div>
-          <div class="sel-title">Soy Médico</div>
-          <div class="sel-sub">Visibilidad, reportes y confianza en la IA</div>
-        </div>
-        <div class="selector-btn" onclick="startTour('asistente')">
-          <div class="sel-icon">👩‍💼</div>
-          <div class="sel-title">Soy Asistente</div>
-          <div class="sel-sub">Gestión diaria, pacientes y WhatsApp</div>
-        </div>
-      </div>
-      <p style="font-size:12px;color:var(--muted)">El tour toma menos de 3 minutos · Puedes repetirlo cuando quieras</p>
-    </div>
-  `;
-  document.getElementById('overlay').classList.remove('hidden');
-}
-
-showWelcome();
+actualizarWA();
 </script>
 </body>
 </html>
